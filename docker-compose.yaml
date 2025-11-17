@@ -1,0 +1,39 @@
+services:
+  rabbitmq:
+    image: "rabbitmq:3.9-alpine"
+    container_name: rabbitmq
+    networks:
+      - mynetwork
+    restart: on-failure
+
+  api:
+    build: .
+    container_name: api
+    command: python manage.py runserver 0.0.0.0:${CONTAINER_PORT}
+    volumes:
+      - .:/api
+      - ./static:/home/ilpiadmin/api/static
+    ports:
+      - "${HOST_PORT}:${CONTAINER_PORT}"
+    networks:
+      - mynetwork
+    restart: always
+    environment:
+      - TZ=Asia/Manila
+
+  celery:
+    build: .
+    command: celery -A src worker --beat --scheduler django --loglevel=info --concurrency=${CONCURRENCY} --pool=prefork -n my_worker -Q ${WORKER_QUEUE}
+    container_name: celery
+    volumes:
+      - .:/api
+    depends_on:
+      - rabbitmq
+      - api
+    networks:
+      - mynetwork
+    restart: on-failure
+
+networks:
+  mynetwork:
+    driver: bridge
