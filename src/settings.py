@@ -84,6 +84,7 @@ MIDDLEWARE = [
 CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOWED_ORIGINS = [
+    "http://192.168.1.*:3000",
     "http://192.168.0.*:3000",
     "http://192.168.0.*",
 ]

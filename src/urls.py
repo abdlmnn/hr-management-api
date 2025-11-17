@@ -36,7 +36,7 @@ urlpatterns = [
         admin.site.urls,
     ),
     path(
-        "api/v1/token/",
+        "api/v1/token/access/",
         CustomTokenObtainPairView.as_view(),
         name="token_obtain_pair",
     ),
