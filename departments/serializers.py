@@ -10,3 +10,8 @@ class DepartmentSerializer(serializers.ModelSerializer):
             "created_by",
             "date_created",
         ]
+
+    def validate_name(self, value):
+        if Department.objects.filter(name=value).exists():
+            raise serializers.ValidationError("Department already exists")
+        return value
