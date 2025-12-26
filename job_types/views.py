@@ -30,7 +30,7 @@ class UpdateJobTypeView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         serializer.save(
-            created_by=self.request.user.username,
+            updated_by=self.request.user.username,
         )
 
 

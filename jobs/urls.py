@@ -13,6 +13,11 @@ urlpatterns = [
         name="add_job",
     ),
     path(
+        "<int:id>/",
+        views.RetrieveJobView.as_view(),
+        name="retrieve_job",
+    ),
+    path(
         "<int:id>/update/",
         views.UpdateJobView.as_view(),
         name="update_job",

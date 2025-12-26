@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "channels",
     "channels_redis",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
@@ -106,6 +107,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
+    'EXCEPTION_HANDLER': 'src.utils.custom_exception_handler',
 }
 
 ROOT_URLCONF = "src.urls"
@@ -197,11 +199,11 @@ MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=365 * 100),  # Access token expiration time
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # Access token expiration time
     "REFRESH_TOKEN_LIFETIME": timedelta(
-        days=365 * 100
+        days=7
     ),  # Refresh token expiration time
-    "ROTATE_REFRESH_TOKENS": False,  # Whether to rotate refresh tokens upon use
+    "ROTATE_REFRESH_TOKENS": True,  # Whether to rotate refresh tokens upon use
     "BLACKLIST_AFTER_ROTATION": True,  # Whether to blacklist refresh tokens after rotation
     "ALGORITHM": "HS256",  # Default signing algorithm
     "SIGNING_KEY": SECRET_KEY,  # The key used to sign the token
