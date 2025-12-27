@@ -69,6 +69,15 @@ sudo python3.10 --version
 
 # HR Management API
 
+## Install requirements
+
+- Added Django-filter
+
+## Make migrations & Migrate
+
+- python manage.py makemigrations
+- python manage.py migrate
+
 ## Features
 
 - **JWT Authentication** - Secure token-based authentication
