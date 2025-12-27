@@ -1,8 +1,10 @@
 from rest_framework import generics, permissions
-from .serializers import (
-    ApplicantSerializer,
-)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.http import FileResponse, Http404
+from .serializers import ApplicantSerializer
 from .models import Applicant
+import os
 
 
 class ApplicantView(generics.ListAPIView):
@@ -17,8 +19,8 @@ class AddApplicantView(generics.CreateAPIView):
     serializer_class = ApplicantSerializer
 
     def perform_create(self, serializer):
-      username = self.request.user.username if self.request.user.is_authenticated else 'anonymous'
-      serializer.save(updated_by=username)
+        username = self.request.user.username if self.request.user.is_authenticated else 'anonymous'
+        serializer.save(updated_by=username)
 
 
 class UpdateApplicantView(generics.RetrieveUpdateAPIView):
