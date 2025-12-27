@@ -17,9 +17,8 @@ class AddApplicantView(generics.CreateAPIView):
     serializer_class = ApplicantSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
-            updated_by=self.request.user.username,
-        )
+      username = self.request.user.username if self.request.user.is_authenticated else 'anonymous'
+      serializer.save(updated_by=username)
 
 
 class UpdateApplicantView(generics.RetrieveUpdateAPIView):

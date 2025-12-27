@@ -12,6 +12,10 @@ class DepartmentSerializer(serializers.ModelSerializer):
         ]
 
     def validate_name(self, value):
-        if Department.objects.filter(name=value).exists():
-            raise serializers.ValidationError("Department already exists")
-        return value
+      instance = self.instance
+      qs = Department.objects.filter(name=value)
+      if instance:
+          qs = qs.exclude(pk=instance.pk)
+      if qs.exists():
+          raise serializers.ValidationError("Department already exists")
+      return value

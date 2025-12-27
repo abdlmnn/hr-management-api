@@ -12,6 +12,11 @@ class JobTypeSerializer(serializers.ModelSerializer):
         ]
 
     def validate_name(self, value):
-        if JobType.objects.filter(name=value).exists():
-            raise serializers.ValidationError("Job Type already exists")
-        return value
+      instance = self.instance
+      qs = JobType.objects.filter(name=value)
+      if instance:
+          qs = qs.exclude(pk=instance.pk)
+      if qs.exists():
+          raise serializers.ValidationError("Job Type already exists")
+      return value
+

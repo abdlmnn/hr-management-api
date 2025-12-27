@@ -21,6 +21,12 @@ class Department(models.Model):
         null=True,
         blank=True,
     )
+    updated_by = models.CharField(
+        max_length=10,
+        default="sys",
+        null=True,
+        blank=True,
+    )
     date_created = models.DateTimeField(
         default=now,
         null=True,
