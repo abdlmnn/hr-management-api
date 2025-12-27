@@ -11,5 +11,20 @@ urlpatterns = [
         "add/",
         views.AddEmailNotificationView.as_view(),
         name="add_email_notification",
-    )
+    ),
+    path(
+        "<int:id>/",
+        views.EmailNotificationDetailView.as_view(),
+        name="email_notification_detail",
+    ),
+    path(
+        "<int:id>/update/",
+        views.EmailNotificationDetailView.as_view(),
+        name="update_email_notification_detail",
+    ),
+    path(
+        "<int:id>/delete/",
+        views.EmailNotificationDetailView.as_view(),
+        name="delete_email_notification_detail",
+    ),
 ]
