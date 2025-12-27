@@ -21,3 +21,33 @@ class AddEmailNotificationView(generics.CreateAPIView):
         serializer.save(
             created_by=self.request.user.username,
         )
+        
+class EmailNotificationDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = EmailNotification.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = EmailNotificationSerializer
+    lookup_field = 'id'
+    
+    def perform_update(self, serializer):
+        serializer.save(
+            created_by=self.request.user.username,
+        )
+        
+class UpdateEmailNotificationView(generics.UpdateAPIView):
+    queryset = EmailNotification.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = EmailNotificationSerializer
+    lookup_field = 'id'
+    
+    def perform_update(self, serializer):
+        serializer.save(
+            created_by=self.request.user.username,
+        )
+        
+class DeleteEmailNotificationView(generics.DestroyAPIView):
+    queryset = EmailNotification.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = EmailNotificationSerializer
+    lookup_field = 'id'
+
+        
