@@ -135,3 +135,13 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
+# RyanWalloh notes
+frontend-dev-pattern.md
+flow-guide.md
+TECHNICAL_REVIEW.md
+CELERY_SETUP.md
+backend-dev-pattern.md
+start_celery.sh
+start_celery_beat.sh
+start_celery_worker.sh
