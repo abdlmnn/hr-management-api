@@ -77,6 +77,18 @@ def handle_applied(applicant):
         body=hr_body,
         created_by="system",
     )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_shortlisted(applicant):
@@ -99,6 +111,18 @@ def handle_shortlisted(applicant):
         body=body,
         created_by="sys",
     )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_interview(applicant):
@@ -121,10 +145,52 @@ def handle_interview(applicant):
         body=body,
         created_by="sys",
     )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_offered(applicant):
-    pass
+    """
+    Called when an applicant is offered a position.
+    Creates an Email Notification entry.
+    """
+    subject = f"Job Offer - {applicant.job.name if applicant.job else 'Position'}"
+    body = (
+        f"Dear {escape(applicant.full_name)},<br><br>"
+        "Congratulations! We are pleased to offer you the position. "
+        "Our HR team will reach out to you soon with further details regarding the offer.<br><br>"
+        "Best Regards,<br>"
+        "ILPI Recruitment Team.<br><br><br><br>"
+    )
+
+    EmailNotification.objects.create(
+        subject=subject,
+        recipient=applicant.email,
+        body=body,
+        created_by="sys",
+    )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_hired(applicant):
@@ -147,6 +213,18 @@ def handle_hired(applicant):
         body=body,
         created_by="sys",
     )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_rejected(applicant):
@@ -169,5 +247,17 @@ def handle_rejected(applicant):
         body=body,
         created_by="sys",
     )
+    # Send emails immediately - try async first, fallback to sync if needed
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
