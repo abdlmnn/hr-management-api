@@ -11,6 +11,10 @@ class ApplicantSerializer(serializers.ModelSerializer):
       use_url=True,
       required=False
     )
+    job_name = serializers.SerializerMethodField()
+
+    def get_job_name(self, obj):
+        return obj.job.name if obj.job else None
 
     def get_valid_id_url(self, obj):
         if obj.valid_id:

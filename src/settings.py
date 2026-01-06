@@ -210,18 +210,34 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),  # The authentication header prefix
 }
 
+# Celery Configuration
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_TIMEZONE = "Asia/Manila"
-CELERY_BROKER_URL = os.getenv("BROKER_URL")
+# Support both CELERY_BROKER_URL (new) and BROKER_URL (old) for backward compatibility
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("BROKER_URL") or "redis://127.0.0.1:6379/0"
+CELERY_CACHE_BACKEND = "django-cache"
+
+# Celery Beat Schedule
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    "bulk-send-email-notifications": {
+        "task": "notifications.tasks.bulk_send_email_nofication",
+        "schedule": crontab(minute="*/5"),  # Run every 5 minutes
+    },
+}
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Gmail: Port 465 uses SSL, Port 587 uses TLS
+# Since .env uses port 465, we use SSL
 EMAIL_USE_SSL = True
-EMAIL_PORT = os.getenv("EMAIL_PORT")
-EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_USE_TLS = False
+EMAIL_PORT = os.getenv("EMAIL_PORT", "465")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 EMAIL_SSL_KEYFILE = None
