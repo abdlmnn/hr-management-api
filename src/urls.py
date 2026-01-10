@@ -81,4 +81,10 @@ urlpatterns = [
             "notifications.urls",
         ),
     ),
+    path(
+        "api/v1/utils/",
+        include(
+            "utils.urls",
+        ),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

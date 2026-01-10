@@ -12,10 +12,10 @@ class JobView(generics.ListAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = JobSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'department', 'job_type']
-    search_fields = ['title', 'description']
-    ordering_fields = ['created_at', 'title']
-    ordering = ['-created_at']
+    filterset_fields = ['is_active', 'department', 'job_type']
+    search_fields = ['name', 'job_description', 'requirements']
+    ordering_fields = ['date_created', 'name', 'deadline']
+    ordering = ['-id']
 
 
 class AddJobView(generics.CreateAPIView):

@@ -60,3 +60,6 @@ wcwidth==0.2.6
 whitenoise==6.7.0
 zipp==3.8.1
 django-filter
+numpy<2.0
+rembg==2.0.50
+onnxruntime==1.16.3
