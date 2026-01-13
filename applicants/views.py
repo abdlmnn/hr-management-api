@@ -19,7 +19,12 @@ class AddApplicantView(generics.CreateAPIView):
     serializer_class = ApplicantSerializer
 
     def perform_create(self, serializer):
-        username = self.request.user.username if self.request.user.is_authenticated else 'anonymous'
+        username = (
+            self.request.user.username
+            if self.request.user.is_authenticated
+            else "anonymous"
+        )
+
         serializer.save(updated_by=username)
 
 
@@ -40,3 +45,9 @@ class DeleteApplicantView(generics.DestroyAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ApplicantSerializer
     lookup_field = "id"
+
+
+class PendingApplicantView(generics.ListAPIView):
+    queryset = Applicant.objects.filter(status="pending")
+    # permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = ApplicantSerializer
