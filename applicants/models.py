@@ -14,6 +14,7 @@ class Applicant(models.Model):
         return f"{self.full_name}"
 
     STATUS_CHOICES = (
+        ("pending", "Pending"),
         ("applied", "Applied"),
         ("shortlisted", "Shortlisted"),
         ("interview", "Interview"),
@@ -63,9 +64,9 @@ class Applicant(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="applied",
-        null=True,
-        blank=True,
+        default="pending",
+        null=False,
+        blank=False,
     )
     updated_by = models.CharField(
         max_length=10,
@@ -75,6 +76,6 @@ class Applicant(models.Model):
     )
     date_applied = models.DateTimeField(
         default=now,
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
     )
