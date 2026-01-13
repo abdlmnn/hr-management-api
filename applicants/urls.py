@@ -22,4 +22,9 @@ urlpatterns = [
         views.DeleteApplicantView.as_view(),
         name="delete_applicant",
     ),
+    path(
+        "pending/",
+        views.PendingApplicantView.as_view(),
+        name="pending_applicant",
+    ),
 ]
