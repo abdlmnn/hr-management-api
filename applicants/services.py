@@ -4,9 +4,9 @@ from .models import Applicant
 from .utils import generate_verification_token
 
 
-verification_token_expiry = 1  # 1 min or 24 hours
+verification_token_expiry = 1
 
-@
+
 def create_application(data, username):
     print("Debug data", data)
 
