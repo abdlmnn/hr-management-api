@@ -36,6 +36,7 @@ def email_notification_body(email_body: str):
     texts = texts.replace("email_body", email_body)
     return texts
 
+
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
@@ -52,13 +53,17 @@ def custom_exception_handler(exc, context):
             response.data = {
                 "success": False,
                 "errors": standardized_errors,
-                "message": "Validation failed" if response.status_code == 400 else "An error occurred"
+                "message": (
+                    "Validation failed"
+                    if response.status_code == 400
+                    else "An error occurred"
+                ),
             }
         else:
             response.data = {
                 "success": False,
                 "message": str(response.data),
-                "errors": {}
+                "errors": {},
             }
 
     return response

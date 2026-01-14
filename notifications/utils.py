@@ -3,4 +3,4 @@ from django.utils import timezone
 
 
 def now():
-    return datetime.now()
+    return timezone.now()
