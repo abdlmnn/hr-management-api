@@ -3,7 +3,10 @@ from django.dispatch import receiver
 from .models import Applicant
 from notifications.models import EmailNotification
 from django.utils.html import escape
+from notifications.tasks import bulk_send_email_nofication
+from .services import verification_token_expiry
 import os
+
 
 @receiver(pre_save, sender=Applicant)
 def applicant_status_change(sender, instance, **kwargs):
@@ -12,26 +15,70 @@ def applicant_status_change(sender, instance, **kwargs):
     Detects when status changes and runs custom logic.
     """
     if not instance.pk:
-        if instance.status == "applied":
-            handle_applied(instance)
+        if instance.status == "pending":
+            handle_pending(instance)
         return
 
     try:
         old_instance = Applicant.objects.get(pk=instance.pk)
+
+        if (
+            instance.status == "pending"
+            and old_instance.verification_token != instance.verification_token
+        ):
+            handle_pending(instance)
+            return
+
+        if old_instance.status != instance.status:
+            if instance.status == "applied":
+                handle_applied(instance)
+            elif instance.status == "shortlisted":
+                handle_shortlisted(instance)
+            elif instance.status == "interview":
+                handle_interview(instance)
+            elif instance.status == "offered":
+                handle_offered(instance)
+            elif instance.status == "hired":
+                handle_hired(instance)
+            elif instance.status == "rejected":
+                handle_rejected(instance)
+
     except Applicant.DoesNotExist:
         return
 
-    if old_instance.status != instance.status:
-        if instance.status == "shortlisted":
-            handle_shortlisted(instance)
-        elif instance.status == "interview":
-            handle_interview(instance)
-        elif instance.status == "offered":
-            handle_offered(instance)
-        elif instance.status == "hired":
-            handle_hired(instance)
-        elif instance.status == "rejected":
-            handle_rejected(instance)
+
+def handle_pending(applicant):
+    """
+    Called when a new applicant is created with 'pending' status.
+    Sends the verification email.
+    """
+    verification_url = f"http://127.0.0.1:8000/api/v1/applicants/{applicant.verification_token}/verify/"
+    subject = "Verify your Application"
+    body = (
+        f"Dear {escape(applicant.full_name)},<br><br>"
+        "Please verify your application by clicking the link below:<br>"
+        f"{verification_url}<br><br>"
+        f"This link expires in {verification_token_expiry} minute(s).<br><br>"
+        "Best Regards,<br>"
+        "ILPI Recruitment Team.<br><br><br><br>"
+    )
+
+    EmailNotification.objects.create(
+        subject=subject, recipient=applicant.email, body=body, created_by="sys"
+    )
+
+    try:
+        from notifications.tasks import bulk_send_email_nofication
+
+        # Try async first (non-blocking)
+        try:
+            bulk_send_email_nofication.delay()
+        except Exception:
+            # If async fails (Celery broker unavailable), send synchronously
+            bulk_send_email_nofication()
+    except Exception:
+        # If import fails, emails will be sent by periodic schedule
+        pass
 
 
 def handle_applied(applicant):
@@ -54,7 +101,6 @@ def handle_applied(applicant):
         body=body,
         created_by="sys",
     )
-
 
     """
     HR notification for new application
@@ -80,6 +126,7 @@ def handle_applied(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -114,6 +161,7 @@ def handle_shortlisted(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -148,6 +196,7 @@ def handle_interview(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -182,6 +231,7 @@ def handle_offered(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -216,6 +266,7 @@ def handle_hired(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -250,6 +301,7 @@ def handle_rejected(applicant):
     # Send emails immediately - try async first, fallback to sync if needed
     try:
         from notifications.tasks import bulk_send_email_nofication
+
         # Try async first (non-blocking)
         try:
             bulk_send_email_nofication.delay()
@@ -259,5 +311,3 @@ def handle_rejected(applicant):
     except Exception:
         # If import fails, emails will be sent by periodic schedule
         pass
-
-
