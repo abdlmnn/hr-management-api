@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import Applicant
+from datetime import timedelta
+from django.utils import timezone
 
 
 class ApplicantSerializer(serializers.ModelSerializer):
@@ -9,13 +11,22 @@ class ApplicantSerializer(serializers.ModelSerializer):
     job_name = serializers.SerializerMethodField()
 
     def validate(self, data):
-        email = data.get("email")
-        job = data.get("job")
+        time_threshold = timezone.now() - timedelta(hours=24)
 
-        if Applicant.objects.filter(
-            email__iexact=email, job=job, status__in=["pending", "applied"]
-        ).exists():
-            raise ValidationError("You have already applied for this job")
+        applicant_exist = (
+            Applicant.objects.filter(
+                email__iexact=data.get("email"),
+                job=data.get("job"),
+                date_applied__gte=time_threshold,
+            )
+            .exclude(status="pending")
+            .exists()
+        )
+
+        if applicant_exist:
+            raise ValidationError(
+                "You have already applied for this job, Please wait 24 hours"
+            )
 
         return data
 
@@ -34,11 +45,24 @@ class ApplicantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Applicant
-        fields = "__all__"
-        read_only_fields = [
-            "updated_by",
+        fields = [
+            "full_name",
+            "email",
+            "contact_number",
+            "job",
+            "job_name",
+            "cover_letter",
+            "valid_id",
+            "resume",
+            "status",
             "date_applied",
         ]
+        read_only_fields = (
+            "verification_token",
+            "token_created",
+            "updated_by",
+            "date_applied",
+        )
         extra_kwargs = {
             "full_name": {"required": True},
             "email": {"required": True},

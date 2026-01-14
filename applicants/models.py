@@ -25,18 +25,18 @@ class Applicant(models.Model):
 
     full_name = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     email = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     contact_number = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     job = models.ForeignKey(
         Job,
@@ -67,6 +67,15 @@ class Applicant(models.Model):
         default="pending",
         null=False,
         blank=False,
+    )
+    verification_token = models.CharField(
+        max_length=60,
+        null=True,
+        blank=True,
+    )
+    token_created = models.DateTimeField(
+        null=True,
+        blank=True,
     )
     updated_by = models.CharField(
         max_length=10,
