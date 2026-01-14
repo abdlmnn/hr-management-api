@@ -1,6 +1,11 @@
 from datetime import datetime
 import os
 from django.utils import timezone
+import secrets
+
+
+def generate_verification_token():
+    return secrets.token_urlsafe(32)
 
 
 def now():

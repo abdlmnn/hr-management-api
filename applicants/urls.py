@@ -23,8 +23,13 @@ urlpatterns = [
         name="delete_applicant",
     ),
     path(
-        "pending/",
+        "pending-status/",
         views.PendingApplicantView.as_view(),
         name="pending_applicant",
+    ),
+    path(
+        "<str:token>/verify/",
+        views.VerifyApplicantView.as_view(),
+        name="verify_applicant",
     ),
 ]
