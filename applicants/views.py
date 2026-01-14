@@ -87,7 +87,9 @@ class VerifyApplicantView(APIView):
             )
 
             if timezone.now() > expiry:
-                raise Http404("Verification link has expired, Please apply again")
+                return Response(
+                    {"message": "Verification link has expired, Please apply again"}
+                )
 
         applicant.status = "applied"
         applicant.verification_token = None
