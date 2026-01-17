@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "job_types",
     "departments",
     "notifications",
+    "email_templates",
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
@@ -235,8 +236,22 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(
             hour=0,
             minute=0,
-            day_of_week="sun",  # Run every Sunday at midnight
         ),
+    },
+    "send-daily-hr-report": {
+        "task": "applicants.tasks.send_hr_report_email",
+        "schedule": crontab(hour=8, minute=0),  # Run every day at 8:00 AM
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,  # Ignore connection errors
+        },
     },
 }
 
