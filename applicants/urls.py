@@ -23,13 +23,18 @@ urlpatterns = [
         name="delete_applicant",
     ),
     path(
-        "pending-status/",
-        views.PendingApplicantView.as_view(),
-        name="pending_applicant",
-    ),
-    path(
         "<str:token>/verify/",
         views.VerifyApplicantView.as_view(),
         name="verify_applicant",
+    ),
+    path(
+        "<int:id>/send-email/",
+        views.SendApplicantEmailView.as_view(),
+        name="send_applicant_Email",
+    ),
+    path(
+        "daily-report/",
+        views.DailyReportView.as_view(),
+        name="daily_report",
     ),
 ]
