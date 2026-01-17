@@ -14,6 +14,7 @@ class Applicant(models.Model):
         return f"{self.full_name}"
 
     STATUS_CHOICES = (
+        ("pending", "Pending"),
         ("applied", "Applied"),
         ("shortlisted", "Shortlisted"),
         ("interview", "Interview"),
@@ -24,18 +25,18 @@ class Applicant(models.Model):
 
     full_name = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     email = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     contact_number = models.CharField(
         max_length=100,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
     )
     job = models.ForeignKey(
         Job,
@@ -63,7 +64,16 @@ class Applicant(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="applied",
+        default="pending",
+        null=False,
+        blank=False,
+    )
+    verification_token = models.CharField(
+        max_length=60,
+        null=True,
+        blank=True,
+    )
+    token_created = models.DateTimeField(
         null=True,
         blank=True,
     )
@@ -75,6 +85,6 @@ class Applicant(models.Model):
     )
     date_applied = models.DateTimeField(
         default=now,
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
     )

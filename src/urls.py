@@ -87,4 +87,10 @@ urlpatterns = [
             "utils.urls",
         ),
     ),
+    path(
+        "api/v1/email-templates/",
+        include(
+            "email_templates.urls",
+        ),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

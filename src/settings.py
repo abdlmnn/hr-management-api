@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "job_types",
     "departments",
     "notifications",
+    "email_templates",
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
@@ -107,7 +108,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
-    'EXCEPTION_HANDLER': 'src.utils.custom_exception_handler',
+    "EXCEPTION_HANDLER": "src.utils.custom_exception_handler",
 }
 
 ROOT_URLCONF = "src.urls"
@@ -200,9 +201,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # Access token expiration time
-    "REFRESH_TOKEN_LIFETIME": timedelta(
-        days=7
-    ),  # Refresh token expiration time
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Refresh token expiration time
     "ROTATE_REFRESH_TOKENS": True,  # Whether to rotate refresh tokens upon use
     "BLACKLIST_AFTER_ROTATION": True,  # Whether to blacklist refresh tokens after rotation
     "ALGORITHM": "HS256",  # Default signing algorithm
@@ -217,15 +216,42 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_TIMEZONE = "Asia/Manila"
 # Support both CELERY_BROKER_URL (new) and BROKER_URL (old) for backward compatibility
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("BROKER_URL") or "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = (
+    os.getenv("CELERY_BROKER_URL")
+    or os.getenv("BROKER_URL")
+    or "redis://127.0.0.1:6379/0"
+)
 CELERY_CACHE_BACKEND = "django-cache"
 
 # Celery Beat Schedule
 from celery.schedules import crontab
+
 CELERY_BEAT_SCHEDULE = {
     "bulk-send-email-notifications": {
         "task": "notifications.tasks.bulk_send_email_nofication",
         "schedule": crontab(minute="*/5"),  # Run every 5 minutes
+    },
+    "cleanup-expired-application": {
+        "task": "applicants.tasks.cleanup_expired_application",
+        "schedule": crontab(
+            hour=0,
+            minute=0,
+        ),
+    },
+    "send-daily-hr-report": {
+        "task": "applicants.tasks.send_hr_report_email",
+        "schedule": crontab(hour=8, minute=0),  # Run every day at 8:00 AM
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,  # Ignore connection errors
+        },
     },
 }
 

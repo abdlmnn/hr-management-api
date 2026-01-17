@@ -1,16 +1,13 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from .models import Applicant
+from datetime import timedelta
+from django.utils import timezone
 
 
 class ApplicantSerializer(serializers.ModelSerializer):
-    valid_id = serializers.FileField(
-      use_url=True,
-      required=False
-    )
-    resume = serializers.FileField(
-      use_url=True,
-      required=False
-    )
+    valid_id = serializers.FileField(use_url=True, required=False)
+    resume = serializers.FileField(use_url=True, required=False)
     job_name = serializers.SerializerMethodField()
 
     def get_job_name(self, obj):
@@ -18,23 +15,37 @@ class ApplicantSerializer(serializers.ModelSerializer):
 
     def get_valid_id_url(self, obj):
         if obj.valid_id:
-            return self.context['request'].build_absolute_uri(obj.valid_id.url)
+            return self.context["request"].build_absolute_uri(obj.valid_id.url)
         return None
 
     def get_resume_url(self, obj):
         if obj.resume:
-            return self.context['request'].build_absolute_uri(obj.resume.url)
+            return self.context["request"].build_absolute_uri(obj.resume.url)
         return None
 
     class Meta:
         model = Applicant
-        fields = "__all__"
-        read_only_fields = [
-            "updated_by",
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "contact_number",
+            "job",
+            "job_name",
+            "cover_letter",
+            "valid_id",
+            "resume",
+            "status",
             "date_applied",
         ]
-        xtra_kwargs = {
-            'full_name': {'required': True},
-            'email': {'required': True},
-            'job': {'required': True},
+        read_only_fields = (
+            "verification_token",
+            "token_created",
+            "updated_by",
+            "date_applied",
+        )
+        extra_kwargs = {
+            "full_name": {"required": True},
+            "email": {"required": True},
+            "job": {"required": True},
         }
