@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError, NotFound
 from .models import Applicant
 from notifications.models import EmailNotification
-from .utils import generate_verification_token
+from .utils import generate_verification_token, format_plain_text_to_html
 from datetime import timedelta, date
 import os
 from django.utils.html import escape
@@ -68,15 +68,34 @@ def create_application(data, username):
     return applicant
 
 
-def send_applicant_status_notification(applicant_id):
+def send_applicant_status_notification(applicant_id, subject=None, body=None):
     """
     Manually sends a notification to an applicant based on their current status.
+    Accepts optional 'subject' and 'body' to override template values.
+    
+    The 'body' parameter accepts plain text from HR users and automatically
+    formats it to HTML for email delivery. Template variables (e.g., {applicant_full_name})
+    are preserved and will be formatted later.
     """
     try:
         applicant = Applicant.objects.get(pk=applicant_id)
     except Applicant.DoesNotExist:
         raise NotFound(f"Applicant with ID {applicant_id} not found.")
 
+    # If custom subject/body provided, create email directly without using template
+    if subject and body:
+        # Format plain text body to HTML (converts newlines to <br>, escapes HTML, preserves template variables)
+        formatted_body = format_plain_text_to_html(body)
+        
+        EmailNotification.objects.create(
+            subject=subject,
+            recipient=applicant.email,
+            body=formatted_body,
+            created_by="sys",
+        )
+        return True
+
+    # Otherwise, use template-based flow
     status_handler_map = {
         "applied": handle_applied,
         "shortlisted": handle_shortlisted,

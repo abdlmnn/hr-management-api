@@ -104,9 +104,13 @@ class SendApplicantEmailView(APIView):
     def post(self, request, id):
         """
         Manually triggers a status-based email notification for a given applicant.
+        Accepts optional 'subject' and 'body' in request body to override template values.
         """
         try:
-            if send_applicant_status_notification(applicant_id=id):
+            subject = request.data.get("subject")
+            body = request.data.get("body")
+            
+            if send_applicant_status_notification(applicant_id=id, subject=subject, body=body):
                 return Response(
                     {
                         "message": "Sending email has been successfully queued for sending."
