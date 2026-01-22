@@ -36,9 +36,17 @@ class Job(models.Model):
         blank=True,
         null=True,
     )
-    requirements = models.TextField(
+    requirements = models.JSONField(
+        default=list,
         blank=True,
-        null=True,
+        null=False,
+        help_text="List of job requirements (array of strings)",
+    )
+    skills = models.JSONField(
+        default=list,
+        blank=True,
+        null=False,
+        help_text="List of skills required for this job (array of strings)",
     )
     deadline = models.DateField(
         blank=True,
