@@ -13,7 +13,7 @@ def convert_requirements_to_json(apps, schema_editor):
 
 
 def reverse_requirements_to_text(apps, schema_editor):
-    # array to text
+    # array to text as backup rollback, just in case :)
     Job = apps.get_model('jobs', 'Job')
     for job in Job.objects.all():
         if job.requirements:

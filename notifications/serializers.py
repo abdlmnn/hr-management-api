@@ -9,4 +9,7 @@ class EmailNotificationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "created_by",
             "date_created",
+            "error_message",
+            "retry_count",
+            "last_attempt",
         ]

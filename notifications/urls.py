@@ -27,4 +27,14 @@ urlpatterns = [
         views.EmailNotificationDetailView.as_view(),
         name="delete_email_notification_detail",
     ),
+    path(
+        "<int:id>/resend/",
+        views.ResendEmailNotificationView.as_view(),
+        name="resend_email_notification",
+    ),
+    path(
+        "bulk-resend/",
+        views.BulkResendEmailNotificationsView.as_view(),
+        name="bulk_resend_email_notifications",
+    ),
 ]
