@@ -41,3 +41,17 @@ class EmailNotification(models.Model):
         null=True,
         blank=True,
     )
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Error message if email sending failed",
+    )
+    retry_count = models.IntegerField(
+        default=0,
+        help_text="Number of resend attempts",
+    )
+    last_attempt = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of last send attempt",
+    )
