@@ -99,7 +99,7 @@ class VerifyApplicantView(APIView):
 
 
 class SendApplicantEmailView(APIView):
-    # permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, id):
         """
@@ -109,8 +109,10 @@ class SendApplicantEmailView(APIView):
         try:
             subject = request.data.get("subject")
             body = request.data.get("body")
-            
-            if send_applicant_status_notification(applicant_id=id, subject=subject, body=body):
+
+            if send_applicant_status_notification(
+                applicant_id=id, subject=subject, body=body
+            ):
                 return Response(
                     {
                         "message": "Sending email has been successfully queued for sending."
@@ -135,7 +137,7 @@ class SendApplicantEmailView(APIView):
 
 
 class DailyReportView(APIView):
-    # permission_classes = permissions.IsAuthenticated
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
         """
