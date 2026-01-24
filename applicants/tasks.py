@@ -6,12 +6,10 @@ from django.core.cache import cache
 from django.utils.html import escape
 from django.core.mail import EmailMessage
 import os
-import logging
 from src.utils import email_notification_body
 from .services import generate_applicant_status_report
 from .utils import format_report_as_html
 
-logger = logging.getLogger(__name__)
 
 verification_token_expiry = 1440  # 24 hours
 
@@ -24,7 +22,7 @@ def cleanup_expired_application():
     """
     cutoff = timezone.now() - timedelta(hours=24)
     Applicant.objects.filter(status="pending", date_applied__lte=cutoff).delete()
-    logger.info("Successfully cleaned up expired pending applications.")
+    print("Cleanup of expired applications completed.")
 
 
 verification_email_lock_time = 60 * 5  # 5 minutes, prevent deadlocks if workers crashes
@@ -39,9 +37,7 @@ def send_single_verification_email(self, applicant_id):
     lock_id = f"verification_email_lock_{applicant_id}"
 
     if not cache.add(lock_id, "locked", verification_email_lock_time):
-        logger.warning(
-            f"Verification email for applicant {applicant_id} is already being sent."
-        )
+        print(f"Lock already exists for applicant {applicant_id}.")
         return
 
     try:
@@ -91,11 +87,10 @@ def send_hr_report_email():
     """
     Generates and emails a daily report of applicant statuses to HR.
     """
-    logger.info("Generating daily HR report...")
     report_data, period_name = generate_applicant_status_report()
 
     if report_data is None:
-        logger.warning("Could not generate HR report data. Aborting.")
+        print("Could not generate HR report data.")
         return
 
     report_html = format_report_as_html(report_data, period_name)
@@ -123,6 +118,6 @@ def send_hr_report_email():
 
     try:
         email.send()
-        logger.info(f"Successfully sent daily report to {hr_email}.")
+        print(f"Daily report sent to {hr_email}")
     except Exception as e:
-        logger.error(f"Failed to send daily report to {hr_email}.", exc_info=True)
+        print(f"Failed to send daily report to {hr_email}.")
