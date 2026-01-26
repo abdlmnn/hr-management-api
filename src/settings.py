@@ -42,7 +42,21 @@ if os.getenv("DEBUG") == "False":
     print("DEBUG IS DISABLED")
     DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+def _split_env_list(name: str):
+    raw = os.getenv(name, "")
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+# Production hardening:
+# - In dev (DEBUG=True), we allow all hosts/origins for convenience.
+# - In prod (DEBUG=False), these must be explicitly set via env.
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+else:
+    # Example: ALLOWED_HOSTS=api.example.com,api.internal.example.com
+    ALLOWED_HOSTS = _split_env_list("ALLOWED_HOSTS")
 
 
 # Application definition
@@ -83,13 +97,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ORIGIN_ALLOW_ALL = True
-
-CORS_ALLOWED_ORIGINS = [
-    "http://192.168.1.*:3000",
-    "http://192.168.0.*:3000",
-    "http://192.168.0.*",
-]
+if DEBUG:
+    # django-cors-headers (v4+) prefers CORS_ALLOW_ALL_ORIGINS, but keep the legacy
+    # alias too for safety.
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ORIGIN_ALLOW_ALL = False
+    # Example: CORS_ALLOWED_ORIGINS=https://applicant.example.com,https://hr.example.com
+    CORS_ALLOWED_ORIGINS = _split_env_list("CORS_ALLOWED_ORIGINS")
 
 CHANNEL_LAYERS = {
     "default": {
@@ -109,6 +126,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
     "EXCEPTION_HANDLER": "src.utils.custom_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {
+        # Public applicant portal protections (IP-based for anonymous users)
+        "public_applicant_submit": os.getenv("PUBLIC_APPLICANT_SUBMIT_RATE", "10/hour"),
+        "public_applicant_verify": os.getenv("PUBLIC_APPLICANT_VERIFY_RATE", "60/hour"),
+    },
 }
 
 ROOT_URLCONF = "src.urls"

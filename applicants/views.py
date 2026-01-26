@@ -3,17 +3,20 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
 from django.http import FileResponse, Http404
-from .serializers import ApplicantSerializer
+from django.shortcuts import redirect
+from .serializers import ApplicantSerializer, ApplicantCreateSerializer
 from .models import Applicant
 from .services import (
     create_application,
     send_applicant_status_notification,
     generate_applicant_status_report,
 )
+from src.captcha import verify_captcha
 from datetime import timedelta
 from django.utils import timezone
 import os
 from .tasks import verification_token_expiry
+from .throttles import PublicApplicantSubmitThrottle, PublicApplicantVerifyThrottle
 
 
 class ApplicantView(generics.ListAPIView):
@@ -25,7 +28,8 @@ class ApplicantView(generics.ListAPIView):
 class AddApplicantView(generics.CreateAPIView):
     queryset = Applicant.objects.all()
     permission_classes = (permissions.AllowAny,)
-    serializer_class = ApplicantSerializer
+    serializer_class = ApplicantCreateSerializer
+    throttle_classes = [PublicApplicantSubmitThrottle]
 
     def perform_create(self, serializer):
         username = (
@@ -35,6 +39,12 @@ class AddApplicantView(generics.CreateAPIView):
         )
 
         try:
+            captcha_token = serializer.validated_data.pop("captcha_token", None)
+            verify_captcha(
+                response_token=captcha_token,
+                remoteip=self.request.META.get("REMOTE_ADDR"),
+            )
+
             applicant = create_application(
                 data=serializer.validated_data,
                 username=username,
@@ -67,13 +77,20 @@ class DeleteApplicantView(generics.DestroyAPIView):
 
 class VerifyApplicantView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [PublicApplicantVerifyThrottle]
 
     def get(self, request, token):
+        success_redirect_url = os.getenv("APPLICANT_PORTAL_VERIFY_SUCCESS_URL")
+        expired_redirect_url = os.getenv("APPLICANT_PORTAL_VERIFY_EXPIRED_URL")
+        invalid_redirect_url = os.getenv("APPLICANT_PORTAL_VERIFY_INVALID_URL")
+
         try:
             applicant = Applicant.objects.get(
                 verification_token=token, status="pending"
             )
         except Applicant.DoesNotExist:
+            if invalid_redirect_url:
+                return redirect(invalid_redirect_url)
             raise Http404("This verification link is invalid or has already been used.")
 
         if applicant.token_created:
@@ -81,6 +98,8 @@ class VerifyApplicantView(APIView):
                 minutes=verification_token_expiry
             )
             if timezone.now() > expiry_time:
+                if expired_redirect_url:
+                    return redirect(expired_redirect_url)
                 return Response(
                     {
                         "message": "This verification link has expired. Please submit a new application to receive a new link."
@@ -90,6 +109,9 @@ class VerifyApplicantView(APIView):
         applicant.status = "applied"
         applicant.verification_token = None
         applicant.save(update_fields=["status", "verification_token"])
+
+        if success_redirect_url:
+            return redirect(success_redirect_url)
 
         return Response(
             {

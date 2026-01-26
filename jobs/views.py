@@ -1,8 +1,11 @@
 from rest_framework import generics, permissions
 from .serializers import (
     JobSerializer,
+    PublicJobSerializer,
 )
 from .models import Job
+from django.db.models import Q
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -53,3 +56,21 @@ class DeleteJobView(generics.DestroyAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = JobSerializer
     lookup_field = "id"
+
+
+class PublicJobListView(generics.ListAPIView):
+    """
+    Public listing endpoint for applicant portal.
+    Returns only active jobs and excludes jobs past deadline (if deadline is set).
+    """
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = PublicJobSerializer
+
+    def get_queryset(self):
+        today = timezone.localdate()
+        return (
+            Job.objects.filter(is_active=True)
+            .filter(Q(deadline__isnull=True) | Q(deadline__gte=today))
+            .order_by("-id")
+        )
