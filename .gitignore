@@ -154,4 +154,3 @@ start_celery.sh
 start_celery_beat.sh
 start_celery_worker.sh
 MODELS_DOCUMENTATION.md
-pre-deployment-plan.md
