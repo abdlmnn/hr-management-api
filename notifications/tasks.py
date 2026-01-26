@@ -16,7 +16,7 @@ def bulk_send_email_nofication(self):
     if not notifications.exists():
         return "No pending email notifications."
 
-    # Prepare email messages in bulk
+    # Bulk Emails
     messages = []
     notification_list = list(notifications)
     for n in notification_list:
@@ -30,20 +30,20 @@ def bulk_send_email_nofication(self):
         msg.content_subtype = "html"
         messages.append((msg, n))
 
-    # Send all emails in one SMTP session
+    # Send to all
     try:
         with get_connection() as connection:
             connection.send_messages([msg for msg, _ in messages])
 
         # Update all as sent in bulk
         notifications.update(is_sent=True, error_message=None, last_attempt=timezone.now())
-        return f"✅ Successfully sent {len(messages)} email(s)."
+        return f"Successfully sent {len(messages)} email(s)."
 
     except Exception as e:
         error_str = str(e)
-        print(f"❌ Failed to send bulk emails: {error_str}")
+        print(f" Failed to send bulk emails: {error_str}")
         
-        # Try to send individually to track which ones failed
+        # Debug: Try to send individually to track which ones failed
         success_count = 0
         failed_count = 0
         
@@ -66,4 +66,4 @@ def bulk_send_email_nofication(self):
                 notification.save()
                 failed_count += 1
         
-        return f"⚠️ Partial success: {success_count} sent, {failed_count} failed. Error: {error_str}"
+        return f"Partial success: {success_count} sent, {failed_count} failed. Error: {error_str}"
