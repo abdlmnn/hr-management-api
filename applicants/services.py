@@ -36,22 +36,48 @@ def create_application(data, username):
         email__iexact=email, job=job, status="pending"
     ).first()
 
+    # Always generate a fresh token for create/resend paths (saved below)
     token = generate_verification_token()
+    now = timezone.now()
 
     if applicant:
-
-        if applicant.token_created and (
-            timezone.now() - applicant.token_created < timedelta(minutes=15)
-        ):
+        # Anti-spam: don't resend too frequently
+        if applicant.token_created and (now - applicant.token_created < timedelta(minutes=15)):
             raise ValidationError(
                 "A verification email has recently been sent. Please check your inbox (and spam folder)."
             )
 
+        # Update applicant details with latest submission (optional but helpful for corrections)
+        # Keep status as pending until verified.
+        applicant.full_name = data.get("full_name", applicant.full_name)
+        applicant.contact_number = data.get("contact_number", applicant.contact_number)
+        applicant.cover_letter = data.get("cover_letter", applicant.cover_letter)
+        if data.get("valid_id") is not None:
+            applicant.valid_id = data.get("valid_id")
+        if data.get("resume") is not None:
+            applicant.resume = data.get("resume")
+
+        # Rotate verification token and timestamp so resend link is always valid/fresh
+        applicant.verification_token = token
+        applicant.token_created = now
+        applicant.updated_by = username
+        applicant.save(
+            update_fields=[
+                "full_name",
+                "contact_number",
+                "cover_letter",
+                "valid_id",
+                "resume",
+                "verification_token",
+                "token_created",
+                "updated_by",
+            ]
+        )
     else:
         applicant = Applicant.objects.create(
             **data,
             verification_token=token,
-            token_created=timezone.now(),
+            token_created=now,
             updated_by=username,
         )
 

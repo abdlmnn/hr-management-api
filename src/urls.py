@@ -93,4 +93,10 @@ urlpatterns = [
             "email_templates.urls",
         ),
     ),
+    path(
+        "api/v1/public/",
+        include(
+            "src.public_urls",
+        ),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

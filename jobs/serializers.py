@@ -79,3 +79,35 @@ class JobSerializer(serializers.ModelSerializer):
             "created_by",
             "date_created",
         ]
+
+
+class PublicJobSerializer(serializers.ModelSerializer):
+    """
+    Public-facing serializer for the applicant portal.
+    Intentionally excludes internal audit fields.
+    """
+
+    department_name = serializers.SerializerMethodField()
+    job_type_name = serializers.SerializerMethodField()
+
+    def get_department_name(self, obj):
+        return obj.department.name if obj.department else None
+
+    def get_job_type_name(self, obj):
+        return obj.job_type.name if obj.job_type else None
+
+    class Meta:
+        model = Job
+        fields = [
+            "id",
+            "name",
+            "department",
+            "department_name",
+            "job_type",
+            "job_type_name",
+            "job_description",
+            "requirements",
+            "skills",
+            "deadline",
+            "is_active",
+        ]
