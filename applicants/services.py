@@ -83,14 +83,25 @@ def create_application(data, username):
             updated_by=username,
         )
 
-    from .tasks import send_single_verification_email
+    base_url = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
+    verification_url = (
+        f"{base_url}/api/v1/applicants/{applicant.verification_token}/verify/"
+    )
+    subject = "Verify your Application"
+    body = (
+        f"Dear {escape(applicant.full_name)},<br><br>"
+        "Please verify your application by clicking the link below:<br><br>"
+        f'<a href="{verification_url}">Verify Application</a><br><br>'
+        f"This link expires in 24 hours.<br><br>"
+        "Best Regards,<br>"
+        "ILPI Recruitment Team.<br><br><br><br>"
+    )
 
-    task_id = f"verification-email-for-applicant-{applicant.id}"
-    send_single_verification_email.apply_async(
-        args=[applicant.id],
-        task_id=task_id,
-        time_limit=300,  # 5 minutes
-        soft_time_limit=240,  # 4 minutes
+    EmailNotification.objects.create(
+        subject=subject,
+        recipient=applicant.email,
+        body=body,
+        created_by=username,
     )
 
     return applicant
