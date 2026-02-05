@@ -9,9 +9,6 @@ from src.utils import email_notification_body
 from django.core.mail import EmailMessage
 
 
-verification_token_expiry = 1440  # 24 hours
-
-
 @shared_task
 def cleanup_expired_application():
     """

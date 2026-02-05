@@ -15,7 +15,6 @@ from src.captcha import verify_captcha
 from datetime import timedelta
 from django.utils import timezone
 import os
-from .tasks import verification_token_expiry
 
 
 class ApplicantView(generics.ListAPIView):
@@ -90,9 +89,7 @@ class VerifyApplicantView(APIView):
                 return redirect(invalid_redirect_url)
 
         if applicant.token_created:
-            expiry_time = applicant.token_created + timedelta(
-                minutes=verification_token_expiry
-            )
+            expiry_time = applicant.token_created + timedelta(minutes=1440)
             if timezone.now() > expiry_time:
                 if expired_redirect_url:
                     return redirect(expired_redirect_url)
