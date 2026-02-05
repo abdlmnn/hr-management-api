@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
 from django.http import FileResponse, Http404
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from .serializers import ApplicantSerializer, ApplicantCreateSerializer
 from .models import Applicant
 from .services import (
@@ -16,7 +16,6 @@ from datetime import timedelta
 from django.utils import timezone
 import os
 from .tasks import verification_token_expiry
-from .throttles import PublicApplicantSubmitThrottle, PublicApplicantVerifyThrottle
 
 
 class ApplicantView(generics.ListAPIView):
@@ -29,7 +28,6 @@ class AddApplicantView(generics.CreateAPIView):
     queryset = Applicant.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = ApplicantCreateSerializer
-    throttle_classes = [PublicApplicantSubmitThrottle]
 
     def perform_create(self, serializer):
         username = (
@@ -77,7 +75,6 @@ class DeleteApplicantView(generics.DestroyAPIView):
 
 class VerifyApplicantView(APIView):
     permission_classes = (permissions.AllowAny,)
-    throttle_classes = [PublicApplicantVerifyThrottle]
 
     def get(self, request, token):
         success_redirect_url = os.getenv("APPLICANT_PORTAL_VERIFY_SUCCESS_URL")
@@ -91,7 +88,7 @@ class VerifyApplicantView(APIView):
         except Applicant.DoesNotExist:
             if invalid_redirect_url:
                 return redirect(invalid_redirect_url)
-            raise Http404("This verification link is invalid or has already been used.")
+            # raise Http404("This verification link is invalid or has already been used.")
 
         if applicant.token_created:
             expiry_time = applicant.token_created + timedelta(
@@ -100,11 +97,6 @@ class VerifyApplicantView(APIView):
             if timezone.now() > expiry_time:
                 if expired_redirect_url:
                     return redirect(expired_redirect_url)
-                return Response(
-                    {
-                        "message": "This verification link has expired. Please submit a new application to receive a new link."
-                    }
-                )
 
         applicant.status = "applied"
         applicant.verification_token = None
@@ -112,12 +104,6 @@ class VerifyApplicantView(APIView):
 
         if success_redirect_url:
             return redirect(success_redirect_url)
-
-        return Response(
-            {
-                "message": "Your application has been successfully verified and submitted."
-            }
-        )
 
 
 class SendApplicantEmailView(APIView):
@@ -171,3 +157,15 @@ class DailyReportView(APIView):
             return Response({"error": "Failed to generate report data."}, status=500)
 
         return Response({"period_name": period_name, "report_data": report_data})
+
+
+def verification_success(request, token):
+    return render(request, "applicants/verification_success.html")
+
+
+def verification_expired(request, token):
+    return render(request, "applicants/verification_expired.html")
+
+
+def verification_invalid(request, token):
+    return render(request, "applicants/verification_invalid.html")

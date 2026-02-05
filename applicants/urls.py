@@ -20,7 +20,8 @@ urlpatterns = [
     path(
         "<int:id>/delete/",
         views.DeleteApplicantView.as_view(),
-        name="delete_applicant",
+        name=
+        "delete_applicant",
     ),
     path(
         "<str:token>/verify/",
@@ -36,5 +37,20 @@ urlpatterns = [
         "daily-report/",
         views.DailyReportView.as_view(),
         name="daily_report",
+    ),
+    path(
+        "<str:token>/verify/success/",
+        views.verification_success,
+        name="verification_success",
+    ),
+    path(
+        "<str:token>/verify/expired/",
+        views.verification_expired,
+        name="verification_expired",
+    ),
+    path(
+        "<str:token>/verify/invalid/",
+        views.verification_invalid,
+        name="verification_invalid",
     ),
 ]

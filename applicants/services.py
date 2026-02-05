@@ -42,7 +42,9 @@ def create_application(data, username):
 
     if applicant:
         # Anti-spam: don't resend too frequently
-        if applicant.token_created and (now - applicant.token_created < timedelta(minutes=15)):
+        if applicant.token_created and (
+            now - applicant.token_created < timedelta(minutes=15)
+        ):
             raise ValidationError(
                 "A verification email has recently been sent. Please check your inbox (and spam folder)."
             )
@@ -98,7 +100,7 @@ def send_applicant_status_notification(applicant_id, subject=None, body=None):
     """
     Manually sends a notification to an applicant based on their current status.
     Accepts optional 'subject' and 'body' to override template values.
-    
+
     The 'body' parameter accepts plain text from HR users and automatically
     formats it to HTML for email delivery. Template variables (e.g., {applicant_full_name})
     are preserved and will be formatted later.
@@ -112,7 +114,7 @@ def send_applicant_status_notification(applicant_id, subject=None, body=None):
     if subject and body:
         # Format plain text body to HTML (converts newlines to <br>, escapes HTML, preserves template variables)
         formatted_body = format_plain_text_to_html(body)
-        
+
         EmailNotification.objects.create(
             subject=subject,
             recipient=applicant.email,
