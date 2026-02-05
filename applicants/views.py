@@ -88,7 +88,6 @@ class VerifyApplicantView(APIView):
         except Applicant.DoesNotExist:
             if invalid_redirect_url:
                 return redirect(invalid_redirect_url)
-            # raise Http404("This verification link is invalid or has already been used.")
 
         if applicant.token_created:
             expiry_time = applicant.token_created + timedelta(
