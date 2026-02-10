@@ -15,6 +15,7 @@ from departments.models import Department
 from job_types.models import JobType
 from jobs.models import Job
 from applicants.models import Applicant
+from notifications.models import EmailNotification
 
 
 class PublicApplicantCreateTests(TestCase):
@@ -30,8 +31,7 @@ class PublicApplicantCreateTests(TestCase):
             is_active=True,
         )
 
-    @patch("applicants.tasks.send_single_verification_email.apply_async")
-    def test_public_create_ignores_status_field(self, mock_apply_async):
+    def test_public_create_ignores_status_field(self):
         url = reverse("add_applicant")
         payload = {
             "full_name": "Test Person",
@@ -46,10 +46,9 @@ class PublicApplicantCreateTests(TestCase):
 
         applicant = Applicant.objects.get(email__iexact="test@example.com", job=self.job)
         self.assertEqual(applicant.status, "pending")
-        mock_apply_async.assert_called()
+        self.assertEqual(EmailNotification.objects.count(), 1)
 
-    @patch("applicants.tasks.send_single_verification_email.apply_async")
-    def test_public_create_resend_within_cooldown_is_blocked(self, mock_apply_async):
+    def test_public_create_resend_within_cooldown_is_blocked(self):
         url = reverse("add_applicant")
         payload = {
             "full_name": "Test Person",
@@ -60,14 +59,13 @@ class PublicApplicantCreateTests(TestCase):
 
         first = self.client.post(url, payload, format="json")
         self.assertEqual(first.status_code, 201)
-        self.assertEqual(mock_apply_async.call_count, 1)
+        self.assertEqual(EmailNotification.objects.count(), 1)
 
         second = self.client.post(url, payload, format="json")
         self.assertEqual(second.status_code, 400)
-        self.assertEqual(mock_apply_async.call_count, 1)  # no new email queued
+        self.assertEqual(EmailNotification.objects.count(), 1)  # no new email queued
 
-    @patch("applicants.tasks.send_single_verification_email.apply_async")
-    def test_public_create_resend_after_cooldown_rotates_token(self, mock_apply_async):
+    def test_public_create_resend_after_cooldown_rotates_token(self):
         url = reverse("add_applicant")
         payload = {
             "full_name": "Test Person",
@@ -78,7 +76,7 @@ class PublicApplicantCreateTests(TestCase):
 
         first = self.client.post(url, payload, format="json")
         self.assertEqual(first.status_code, 201)
-        self.assertEqual(mock_apply_async.call_count, 1)
+        self.assertEqual(EmailNotification.objects.count(), 1)
 
         applicant = Applicant.objects.get(email__iexact="resend2@example.com", job=self.job)
         old_token = applicant.verification_token
@@ -90,7 +88,7 @@ class PublicApplicantCreateTests(TestCase):
 
         second = self.client.post(url, payload, format="json")
         self.assertEqual(second.status_code, 201)
-        self.assertEqual(mock_apply_async.call_count, 2)
+        self.assertEqual(EmailNotification.objects.count(), 2)
 
         applicant.refresh_from_db()
         self.assertNotEqual(applicant.verification_token, old_token)
@@ -107,24 +105,17 @@ class PublicApplicantCreateTests(TestCase):
         with override_settings(REST_FRAMEWORK=rf):
             url = reverse("add_applicant")
 
-            payload1 = {
+            payload = {
                 "full_name": "AA",
                 "email": "t1@example.com",
                 "contact_number": "09123456789",
                 "job": self.job.id,
             }
-            payload2 = {
-                "full_name": "BB",
-                "email": "t2@example.com",
-                "contact_number": "09123456789",
-                "job": self.job.id,
-            }
 
-            with patch("applicants.tasks.send_single_verification_email.apply_async"):
-                r1 = self.client.post(url, payload1, format="json")
-                self.assertEqual(r1.status_code, 201)
-                r2 = self.client.post(url, payload2, format="json")
-                self.assertEqual(r2.status_code, 429)
+            r1 = self.client.post(url, payload, format="json")
+            self.assertEqual(r1.status_code, 201)
+            r2 = self.client.post(url, payload, format="json")
+            self.assertEqual(r2.status_code, 429)
 
     @patch.dict(os.environ, {"CAPTCHA_SECRET_KEY": "dummy-secret"}, clear=False)
     def test_public_create_requires_captcha_when_configured(self):
@@ -136,8 +127,7 @@ class PublicApplicantCreateTests(TestCase):
             "job": self.job.id,
         }
 
-        with patch("applicants.tasks.send_single_verification_email.apply_async"):
-            resp = self.client.post(url, payload, format="json")
+        resp = self.client.post(url, payload, format="json")
 
         self.assertEqual(resp.status_code, 400)
 
@@ -149,8 +139,7 @@ class PublicApplicantCreateTests(TestCase):
             "contact_number": "09123456789",
             "job": self.job.id,
         }
-        with patch("applicants.tasks.send_single_verification_email.apply_async"):
-            resp = self.client.post(url, payload, format="json")
+        resp = self.client.post(url, payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_public_create_rejects_invalid_contact_number(self):
@@ -161,8 +150,7 @@ class PublicApplicantCreateTests(TestCase):
             "contact_number": "abc123",
             "job": self.job.id,
         }
-        with patch("applicants.tasks.send_single_verification_email.apply_async"):
-            resp = self.client.post(url, payload, format="json")
+        resp = self.client.post(url, payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_public_create_trims_full_name(self):
@@ -173,8 +161,7 @@ class PublicApplicantCreateTests(TestCase):
             "contact_number": "09123456789",
             "job": self.job.id,
         }
-        with patch("applicants.tasks.send_single_verification_email.apply_async"):
-            resp = self.client.post(url, payload, format="json")
+        resp = self.client.post(url, payload, format="json")
         self.assertEqual(resp.status_code, 201)
         applicant = Applicant.objects.get(email__iexact="trim@example.com", job=self.job)
         self.assertEqual(applicant.full_name, "Trim Me")
@@ -194,8 +181,7 @@ class PublicApplicantCreateTests(TestCase):
             "job": self.job.id,
             "resume": big_pdf,
         }
-        with patch("applicants.tasks.send_single_verification_email.apply_async"):
-            resp = self.client.post(url, payload, format="multipart")
+        resp = self.client.post(url, payload, format="multipart")
         self.assertEqual(resp.status_code, 400)
 
 
