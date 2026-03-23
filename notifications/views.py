@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
+from django.db.models import Count, Q
 from .serializers import (
     EmailNotificationSerializer,
 )
@@ -55,6 +56,19 @@ class AddEmailNotificationView(generics.CreateAPIView):
         serializer.save(
             created_by=self.request.user.username,
         )
+
+
+class EmailNotificationSummaryView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        summary = EmailNotification.objects.aggregate(
+            sent=Count("id", filter=Q(is_sent=True)),
+            failed=Count("id", filter=Q(is_sent=False) & ~Q(error_message__isnull=True) & ~Q(error_message="")),
+            pending=Count("id", filter=Q(is_sent=False) & (Q(error_message__isnull=True) | Q(error_message=""))),
+        )
+
+        return Response(summary, status=status.HTTP_200_OK)
         
 class EmailNotificationDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = EmailNotification.objects.all()

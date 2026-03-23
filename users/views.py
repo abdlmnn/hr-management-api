@@ -1,11 +1,27 @@
-from django.contrib.auth.models import User
-from rest_framework import generics, permissions, status
+from rest_framework import status
 from rest_framework.response import Response
-from users.serializers import UserSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .serializers import ChangePasswordSerializer
+from .serializers import ChangePasswordSerializer, UpdateProfileSerializer
 from django.contrib.auth import update_session_auth_hash
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        serializer = UpdateProfileSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ChangePasswordView(APIView):
@@ -26,6 +42,7 @@ class ChangePasswordView(APIView):
             # Set the new password
             user.set_password(serializer.data["new_password"])
             user.save()
+            OutstandingToken.objects.filter(user=user).delete()
 
             # Update the session hash to prevent logout after password change
             update_session_auth_hash(request, user)

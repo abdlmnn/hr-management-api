@@ -50,10 +50,13 @@ def custom_exception_handler(exc, context):
                 else:
                     standardized_errors[field] = [str(errors)]
 
+            detail_message = standardized_errors.get("detail", [None])[0]
+
             response.data = {
                 "success": False,
                 "errors": standardized_errors,
-                "message": (
+                "message": detail_message
+                or (
                     "Validation failed"
                     if response.status_code == 400
                     else "An error occurred"

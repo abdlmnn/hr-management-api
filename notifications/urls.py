@@ -8,6 +8,11 @@ urlpatterns = [
         name="list_email_notifications",
     ),
     path(
+        "summary/",
+        views.EmailNotificationSummaryView.as_view(),
+        name="email_notification_summary",
+    ),
+    path(
         "add/",
         views.AddEmailNotificationView.as_view(),
         name="add_email_notification",

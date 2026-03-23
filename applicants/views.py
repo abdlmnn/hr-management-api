@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
@@ -27,6 +28,8 @@ class AddApplicantView(generics.CreateAPIView):
     queryset = Applicant.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = ApplicantCreateSerializer
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = "public_applicant_submit"
 
     def perform_create(self, serializer):
         username = (
@@ -74,6 +77,8 @@ class DeleteApplicantView(generics.DestroyAPIView):
 
 class VerifyApplicantView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public_applicant_verify"
 
     def get(self, request, token):
         success_redirect_url = os.getenv("APPLICANT_PORTAL_VERIFY_SUCCESS_URL")
