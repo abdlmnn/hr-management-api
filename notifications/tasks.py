@@ -10,7 +10,8 @@ from django.core.mail import EmailMessage, get_connection
 def bulk_send_email_nofication(self):
     notifications = EmailNotification.objects.filter(
         is_sent=False,
-        date_created__date=timezone.now().date(),
+        # commented date_create in models the default is "now"
+        # date_created__date=timezone.now().date()
     )
 
     if not notifications.exists():
@@ -36,17 +37,19 @@ def bulk_send_email_nofication(self):
             connection.send_messages([msg for msg, _ in messages])
 
         # Update all as sent in bulk
-        notifications.update(is_sent=True, error_message=None, last_attempt=timezone.now())
+        notifications.update(
+            is_sent=True, error_message=None, last_attempt=timezone.now()
+        )
         return f"Successfully sent {len(messages)} email(s)."
 
     except Exception as e:
         error_str = str(e)
         print(f" Failed to send bulk emails: {error_str}")
-        
+
         # Debug: Try to send individually to track which ones failed
         success_count = 0
         failed_count = 0
-        
+
         for msg, notification in messages:
             try:
                 with get_connection() as connection:
@@ -65,5 +68,5 @@ def bulk_send_email_nofication(self):
                 notification.last_attempt = timezone.now()
                 notification.save()
                 failed_count += 1
-        
+
         return f"Partial success: {success_count} sent, {failed_count} failed. Error: {error_str}"

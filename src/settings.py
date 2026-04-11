@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "email_templates",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_celery_results",
     "django_celery_beat",
@@ -108,6 +109,8 @@ else:
     # Example: CORS_ALLOWED_ORIGINS=https://applicant.example.com,https://hr.example.com
     CORS_ALLOWED_ORIGINS = _split_env_list("CORS_ALLOWED_ORIGINS")
 
+CORS_ALLOW_CREDENTIALS = True
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -123,6 +126,9 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
     "EXCEPTION_HANDLER": "src.utils.custom_exception_handler",
@@ -130,6 +136,9 @@ REST_FRAMEWORK = {
         # Public applicant portal protections (IP-based for anonymous users)
         "public_applicant_submit": os.getenv("PUBLIC_APPLICANT_SUBMIT_RATE", "10/hour"),
         "public_applicant_verify": os.getenv("PUBLIC_APPLICANT_VERIFY_RATE", "60/hour"),
+        "auth_login": os.getenv("AUTH_LOGIN_RATE", "5/minute"),
+        "auth_refresh": os.getenv("AUTH_REFRESH_RATE", "30/minute"),
+        "auth_logout": os.getenv("AUTH_LOGOUT_RATE", "30/minute"),
     },
 }
 
@@ -222,14 +231,25 @@ MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # Access token expiration time
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Refresh token expiration time
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TOKEN_MINUTES", "60"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "14"))
+    ),
     "ROTATE_REFRESH_TOKENS": True,  # Whether to rotate refresh tokens upon use
     "BLACKLIST_AFTER_ROTATION": True,  # Whether to blacklist refresh tokens after rotation
     "ALGORITHM": "HS256",  # Default signing algorithm
     "SIGNING_KEY": SECRET_KEY,  # The key used to sign the token
     "AUTH_HEADER_TYPES": ("Bearer",),  # The authentication header prefix
 }
+
+AUTH_COOKIE_REFRESH_NAME = os.getenv("AUTH_COOKIE_REFRESH_NAME", "refresh_token")
+AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "False") == "True"
+AUTH_COOKIE_HTTP_ONLY = True
+AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Lax")
+AUTH_COOKIE_PATH = os.getenv("AUTH_COOKIE_PATH", "/api/v1/auth/")
+AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN") or None
 
 # Celery Configuration
 CELERY_ACCEPT_CONTENT = ["json"]

@@ -227,6 +227,14 @@ class ApplicantVerifyRedirectTests(TestCase):
         applicant.refresh_from_db()
         self.assertEqual(applicant.status, "applied")
         self.assertIsNone(applicant.verification_token)
+        self.assertEqual(EmailNotification.objects.count(), 2)
+        self.assertEqual(
+            EmailNotification.objects.filter(recipient="verify1@example.com").count(), 1
+        )
+        self.assertEqual(
+            EmailNotification.objects.filter(recipient=os.environ.get("EMAIL_HOST_USER")).count(),
+            1,
+        )
 
     @patch.dict(
         os.environ,
