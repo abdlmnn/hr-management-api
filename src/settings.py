@@ -11,10 +11,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, timezone
 import os
 from dotenv import load_dotenv
 import pymysql
+
+UTC = timezone.utc
 
 # import mimetypes
 
@@ -41,6 +43,7 @@ if os.getenv("DEBUG") == "True":
 if os.getenv("DEBUG") == "False":
     print("DEBUG IS DISABLED")
     DEBUG = False
+
 
 def _split_env_list(name: str):
     raw = os.getenv(name, "")
@@ -77,7 +80,6 @@ INSTALLED_APPS = [
     "email_templates",
     "rest_framework",
     "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_celery_results",
     "django_celery_beat",
@@ -126,9 +128,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.ScopedRateThrottle",
-    ),
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
     "EXCEPTION_HANDLER": "src.utils.custom_exception_handler",
@@ -136,9 +136,6 @@ REST_FRAMEWORK = {
         # Public applicant portal protections (IP-based for anonymous users)
         "public_applicant_submit": os.getenv("PUBLIC_APPLICANT_SUBMIT_RATE", "10/hour"),
         "public_applicant_verify": os.getenv("PUBLIC_APPLICANT_VERIFY_RATE", "60/hour"),
-        "auth_login": os.getenv("AUTH_LOGIN_RATE", "5/minute"),
-        "auth_refresh": os.getenv("AUTH_REFRESH_RATE", "30/minute"),
-        "auth_logout": os.getenv("AUTH_LOGOUT_RATE", "30/minute"),
     },
 }
 
@@ -237,19 +234,11 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "14"))
     ),
-    "ROTATE_REFRESH_TOKENS": True,  # Whether to rotate refresh tokens upon use
-    "BLACKLIST_AFTER_ROTATION": True,  # Whether to blacklist refresh tokens after rotation
+    "ROTATE_REFRESH_TOKENS": False,
     "ALGORITHM": "HS256",  # Default signing algorithm
     "SIGNING_KEY": SECRET_KEY,  # The key used to sign the token
     "AUTH_HEADER_TYPES": ("Bearer",),  # The authentication header prefix
 }
-
-AUTH_COOKIE_REFRESH_NAME = os.getenv("AUTH_COOKIE_REFRESH_NAME", "refresh_token")
-AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "False") == "True"
-AUTH_COOKIE_HTTP_ONLY = True
-AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Lax")
-AUTH_COOKIE_PATH = os.getenv("AUTH_COOKIE_PATH", "/api/v1/auth/")
-AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN") or None
 
 # Celery Configuration
 CELERY_ACCEPT_CONTENT = ["json"]
