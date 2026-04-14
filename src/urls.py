@@ -77,12 +77,6 @@ urlpatterns = [
         ),
     ),
     path(
-        "api/v1/utils/",
-        include(
-            "utils.urls",
-        ),
-    ),
-    path(
         "api/v1/email-templates/",
         include(
             "email_templates.urls",
