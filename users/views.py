@@ -4,7 +4,6 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import ChangePasswordSerializer, UpdateProfileSerializer
 from django.contrib.auth import update_session_auth_hash
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 
 class ProfileView(APIView):
@@ -42,7 +41,6 @@ class ChangePasswordView(APIView):
             # Set the new password
             user.set_password(serializer.data["new_password"])
             user.save()
-            OutstandingToken.objects.filter(user=user).delete()
 
             # Update the session hash to prevent logout after password change
             update_session_auth_hash(request, user)
