@@ -53,6 +53,12 @@ urlpatterns = [
         ),
     ),
     path(
+        "api/v1/activities/",
+        include(
+            "activities.urls",
+        ),
+    ),
+    path(
         "api/v1/applicants/",
         include(
             "applicants.urls",
