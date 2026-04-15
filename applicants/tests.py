@@ -48,6 +48,10 @@ class PublicApplicantCreateTests(TestCase):
         applicant = Applicant.objects.get(email__iexact="test@example.com", job=self.job)
         self.assertEqual(applicant.status, "pending")
         self.assertEqual(EmailNotification.objects.count(), 1)
+        notification = EmailNotification.objects.get(recipient="test@example.com")
+        self.assertIn("Position Applied For: Backend Developer", notification.body)
+        self.assertIn("Current Application Status: Pending", notification.body)
+        self.assertIn("Kindly note that this verification link will expire in 24 hours.", notification.body)
 
     def test_public_create_resend_within_cooldown_is_blocked(self):
         url = reverse("add_applicant")
@@ -236,6 +240,15 @@ class ApplicantVerifyRedirectTests(TestCase):
             EmailNotification.objects.filter(recipient=os.environ.get("EMAIL_HOST_USER")).count(),
             1,
         )
+
+        hr_notification = EmailNotification.objects.get(
+            recipient=os.environ.get("EMAIL_HOST_USER")
+        )
+        self.assertIn("Position Applied For: Backend Developer", hr_notification.body)
+        self.assertIn("Application Status: Applied", hr_notification.body)
+        self.assertIn("Applicant Name: Verify Me", hr_notification.body)
+        self.assertIn("Email Address: verify1@example.com", hr_notification.body)
+        self.assertIn("Contact Number: 09123456789", hr_notification.body)
 
     @patch.dict(
         os.environ,
