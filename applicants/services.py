@@ -59,6 +59,26 @@ def _append_application_summary(body, applicant):
     return f"{body}{_build_application_summary_html(applicant)}"
 
 
+def _build_hr_application_summary_html(applicant):
+    submitted_at = (
+        timezone.localtime(applicant.date_applied).strftime("%B %d, %Y %I:%M %p")
+        if applicant.date_applied
+        else "Not available"
+    )
+    cover_letter = escape(applicant.cover_letter) if applicant.cover_letter else "Not provided"
+
+    return (
+        "Applicant details are as follows:<br><br>"
+        f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
+        f"Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
+        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br>"
+        f"Email Address: {escape(applicant.email or 'Not provided')}<br>"
+        f"Contact Number: {escape(applicant.contact_number or 'Not provided')}<br>"
+        f"Date Submitted: {escape(submitted_at)}<br>"
+        f"Cover Letter: {cover_letter}<br><br>"
+    )
+
+
 def create_application(data, username):
     """
     Creates or updates an applicant.
@@ -139,9 +159,14 @@ def create_application(data, username):
     subject = "Verify your Application"
     body = (
         f"Dear {escape(applicant.full_name)},<br><br>"
+        "Thank you for your interest in employment opportunities with ILPI.<br><br>"
         "Please verify your application by clicking the link below:<br><br>"
         f'<a href="{verification_url}">Verify Application</a><br><br>'
-        f"This link expires in 24 hours.<br><br>"
+        "For your reference, your application details are summarized below:<br><br>"
+        f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
+        f"Current Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
+        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br><br>"
+        "Kindly note that this verification link will expire in 24 hours.<br><br>"
         "Best Regards,<br>"
         "ILPI Recruitment Team.<br><br><br><br>"
     )
@@ -248,10 +273,8 @@ def handle_applied(applicant):
     hr_subject = f"New Job Application Received: {applicant.job.name if applicant.job else 'Position not specified'}"
     hr_body = (
         f"Dear HR Team,<br><br>"
-        f"A new job application has been received for the position of {applicant.job.name if applicant.job else 'Position not specified'}.<br><br>"
-        f"Applicant Name: {escape(applicant.full_name)}<br>"
-        f"Email: {escape(applicant.email)}<br>"
-        f"Phone: {escape(applicant.contact_number)}<br><br>"
+        "A new job application has been successfully verified and is now ready for review.<br><br>"
+        f"{_build_hr_application_summary_html(applicant)}"
         "Please review the application at your earliest convenience.<br><br>"
         "Best Regards,<br>"
         "ILPI Recruitment System.<br><br><br><br>"
