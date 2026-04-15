@@ -109,22 +109,26 @@ class ApplicantCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise ValidationError("Contact number is required.")
 
-        # Allow digits, spaces, +, -, parentheses. Reject other characters.
-        if not re.fullmatch(r"[0-9+\-() ]{7,30}", value):
-            raise ValidationError(
-                "Contact number must be 7-30 characters and contain only digits, spaces, '+', '-', or parentheses."
+        normalized = re.sub(r"[\s\-()]", "", value)
+        is_valid_ph_mobile = any(
+            re.fullmatch(pattern, normalized)
+            for pattern in (
+                r"09\d{9}",
+                r"\+639\d{9}",
+                r"639\d{9}",
             )
+        )
 
-        # Require at least 7 digits
-        digits = re.sub(r"\D", "", value)
-        if len(digits) < 7:
-            raise ValidationError("Contact number must contain at least 7 digits.")
+        if not is_valid_ph_mobile:
+            raise ValidationError(
+                "Contact number must be a valid Philippine mobile number, such as 09123456789 or +639123456789."
+            )
 
         return value
 
     def _max_upload_bytes(self) -> int:
-        # Default 5 MB; can be overridden per environment.
-        max_mb = int(os.getenv("APPLICANT_UPLOAD_MAX_MB", "5"))
+
+        max_mb = int(os.getenv("APPLICANT_UPLOAD_MAX_MB", "25"))
         return max_mb * 1024 * 1024
 
     def _validate_upload_size(self, file_obj, field_name: str):

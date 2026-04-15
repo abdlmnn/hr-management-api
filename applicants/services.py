@@ -10,6 +10,55 @@ from django.db.models import Count
 from email_templates.models import EmailTemplate
 
 
+def _get_applicant_job_name(applicant):
+    if applicant.job and applicant.job.name:
+        return applicant.job.name
+    return "Position not specified"
+
+
+def _get_applicant_status_label(applicant):
+    return dict(Applicant.STATUS_CHOICES).get(
+        applicant.status, applicant.status.title()
+    )
+
+
+def _format_applicant_email_text(value, applicant, escape_html=False):
+    if not value:
+        return ""
+
+    applicant_name = applicant.full_name or "Applicant"
+    job_name = _get_applicant_job_name(applicant)
+
+    replacements = {
+        "{applicant_full_name}": (
+            escape(applicant_name) if escape_html else applicant_name
+        ),
+        "{job_name}": escape(job_name) if escape_html else job_name,
+    }
+
+    formatted = value
+    for placeholder, replacement in replacements.items():
+        formatted = formatted.replace(placeholder, replacement)
+
+    return formatted
+
+
+def _build_application_summary_html(applicant):
+    return (
+        "<br><br>"
+        "Please find below a summary of your job application for your reference:<br><br>"
+        f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
+        f"Current Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
+        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br><br>"
+        "We appreciate your continued interest in pursuing employment with ILPI. "
+        "Should you require any clarification, our Human Resources team will be pleased to assist you.<br><br>"
+    )
+
+
+def _append_application_summary(body, applicant):
+    return f"{body}{_build_application_summary_html(applicant)}"
+
+
 def create_application(data, username):
     """
     Creates or updates an applicant.
@@ -124,10 +173,14 @@ def send_applicant_status_notification(applicant_id, subject=None, body=None):
     # If custom subject/body provided, create email directly without using template
     if subject and body:
         # Format plain text body to HTML (converts newlines to <br>, escapes HTML, preserves template variables)
-        formatted_body = format_plain_text_to_html(body)
+        formatted_subject = _format_applicant_email_text(subject, applicant)
+        formatted_body = format_plain_text_to_html(
+            _format_applicant_email_text(body, applicant)
+        )
+        formatted_body = _append_application_summary(formatted_body, applicant)
 
         EmailNotification.objects.create(
-            subject=subject,
+            subject=formatted_subject,
             recipient=applicant.email,
             body=formatted_body,
             created_by="sys",
@@ -159,18 +212,24 @@ def create_and_send_email(applicant, status):
     """
     try:
         template = EmailTemplate.objects.get(status=status)
-        subject = template.subject.format(
-            job_name=applicant.job.name if applicant.job else "Position"
+        subject = _format_applicant_email_text(template.subject, applicant)
+        body = _format_applicant_email_text(
+            template.body, applicant, escape_html=True
         )
-        body = template.body.format(applicant_full_name=escape(applicant.full_name))
     except EmailTemplate.DoesNotExist:
-        subject = f"Job Application {status.title()}"
+        status_label = _get_applicant_status_label(applicant)
+        position_name = escape(_get_applicant_job_name(applicant))
+        subject = f"Application Update for {_get_applicant_job_name(applicant)}"
         body = (
             f"Dear {escape(applicant.full_name)},<br><br>"
-            f"Your application status has been updated to {status}.<br><br>"
+            "We are writing to provide an update regarding your application.<br><br>"
+            f"Your application for the {position_name} position is currently under the "
+            f'"{escape(status_label)}" status.<br><br>'
             "Best Regards,<br>"
             "ILPI Recruitment Team.<br><br><br><br>"
         )
+
+    body = _append_application_summary(body, applicant)
 
     EmailNotification.objects.create(
         subject=subject,
