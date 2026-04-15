@@ -15,6 +15,7 @@ from departments.models import Department
 from job_types.models import JobType
 from jobs.models import Job
 from applicants.models import Applicant
+from applicants.services import send_applicant_status_notification
 from notifications.models import EmailNotification
 
 
@@ -277,3 +278,54 @@ class ApplicantVerifyRedirectTests(TestCase):
 
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], "https://applicant.example/invalid")
+
+
+class ApplicantStatusEmailTests(TestCase):
+    def setUp(self):
+        self.department = Department.objects.create(name="IT")
+        self.job_type = JobType.objects.create(name="Full-time", code="FT")
+        self.job = Job.objects.create(
+            name="Backend Developer",
+            department=self.department,
+            job_type=self.job_type,
+            is_active=True,
+        )
+        self.applicant = Applicant.objects.create(
+            full_name="Jane Applicant",
+            email="jane@example.com",
+            contact_number="09123456789",
+            job=self.job,
+            status="shortlisted",
+        )
+
+    def test_template_status_email_includes_job_application_summary(self):
+        send_applicant_status_notification(self.applicant.id)
+
+        notification = EmailNotification.objects.get(recipient=self.applicant.email)
+
+        self.assertIn("Backend Developer", notification.body)
+        self.assertIn("Position Applied For: Backend Developer", notification.body)
+        self.assertIn("Current Application Status: Shortlisted", notification.body)
+        self.assertIn(
+            "We appreciate your continued interest in pursuing employment with ILPI.",
+            notification.body,
+        )
+
+    def test_custom_status_email_formats_placeholders_and_appends_summary(self):
+        send_applicant_status_notification(
+            self.applicant.id,
+            subject="Update Regarding Your {job_name} Application",
+            body=(
+                "Dear {applicant_full_name},\n\n"
+                "We are pleased to inform you that your application remains under active review."
+            ),
+        )
+
+        notification = EmailNotification.objects.get(recipient=self.applicant.email)
+
+        self.assertEqual(
+            notification.subject, "Update Regarding Your Backend Developer Application"
+        )
+        self.assertIn("Dear Jane Applicant,", notification.body)
+        self.assertIn("Position Applied For: Backend Developer", notification.body)
+        self.assertIn("Current Application Status: Shortlisted", notification.body)
