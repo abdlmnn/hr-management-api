@@ -1,7 +1,9 @@
-from django.db.models.signals import pre_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from .models import Applicant
 from applicants.services import handle_applied
+from employees.services import sync_employee_from_applicant
+
+from .models import Applicant
 
 
 @receiver(pre_save, sender=Applicant)
@@ -22,3 +24,11 @@ def applicant_status_change(sender, instance, **kwargs):
 
     except Applicant.DoesNotExist:
         return
+
+
+@receiver(post_save, sender=Applicant)
+def applicant_hired_sync_employee(sender, instance, created, **kwargs):
+    if created and instance.status != "hired":
+        return
+
+    sync_employee_from_applicant(instance, username=instance.updated_by or "sys")
