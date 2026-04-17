@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "activities",
     "jobs",
     "applicants",
+    "employees",
     "job_types",
     "departments",
     "notifications",
