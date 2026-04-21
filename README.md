@@ -66,3 +66,11 @@ sudo python3.10 --version
    ```sh
    sudo docker-compose up -d # detach mode
    ```
+
+## Applicant naming contract
+
+- `Applicant` stores `first_name`, optional `middle_name`, and `last_name` as the source of truth.
+- `full_name` remains in the database, but it is derived from those parts and is not user-writable.
+- API clients must send `first_name`, `middle_name`, and `last_name` for applicant and employee create/update flows.
+- Sending `full_name` in request bodies is rejected with a validation error.
+- The derived `full_name` value is composed by joining non-empty name parts with single spaces and trimming whitespace.

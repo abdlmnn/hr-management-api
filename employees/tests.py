@@ -23,7 +23,8 @@ class EmployeeProvisioningTests(TestCase):
 
     def test_hired_applicant_creates_employee(self):
         applicant = Applicant.objects.create(
-            full_name="Jane Applicant",
+            first_name="Jane",
+            last_name="Applicant",
             email="jane@example.com",
             contact_number="09123456789",
             job=self.job,
@@ -40,7 +41,8 @@ class EmployeeProvisioningTests(TestCase):
 
     def test_repeated_hired_status_does_not_duplicate_employee(self):
         applicant = Applicant.objects.create(
-            full_name="John Applicant",
+            first_name="John",
+            last_name="Applicant",
             email="john@example.com",
             contact_number="09123456789",
             job=self.job,
@@ -77,7 +79,8 @@ class EmployeeApiTests(TestCase):
             is_active=True,
         )
         self.applicant = Applicant.objects.create(
-            full_name="Jamie Employee",
+            first_name="Jamie",
+            last_name="Employee",
             email="jamie@example.com",
             contact_number="09123456789",
             job=self.job,
@@ -98,7 +101,9 @@ class EmployeeApiTests(TestCase):
         response = self.client.patch(
             reverse("update_employee", kwargs={"id": self.employee.id}),
             {
-                "full_name": "Jamie Updated",
+                "first_name": "Jamie",
+                "middle_name": "Q",
+                "last_name": "Updated",
                 "email": "updated@example.com",
                 "contact_number": "09999999999",
                 "status": "hired",
@@ -116,9 +121,32 @@ class EmployeeApiTests(TestCase):
         self.assertEqual(self.employee.job, self.other_job)
         self.assertEqual(self.employee.employment_type, self.other_job_type)
         self.assertEqual(str(self.employee.date_started), "2026-04-17")
-        self.assertEqual(self.applicant.full_name, "Jamie Updated")
+        self.assertEqual(self.applicant.first_name, "Jamie")
+        self.assertEqual(self.applicant.middle_name, "Q")
+        self.assertEqual(self.applicant.last_name, "Updated")
+        self.assertEqual(self.applicant.full_name, "Jamie Q Updated")
         self.assertEqual(self.applicant.email, "updated@example.com")
         self.assertEqual(self.applicant.contact_number, "09999999999")
+
+    def test_employee_update_rejects_writable_full_name(self):
+        response = self.client.patch(
+            reverse("update_employee", kwargs={"id": self.employee.id}),
+            {
+                "full_name": "Should Fail",
+                "first_name": "Jamie",
+                "last_name": "Updated",
+                "email": "updated@example.com",
+                "contact_number": "09999999999",
+                "status": "hired",
+                "job": self.other_job.id,
+                "employment_type": self.other_job_type.id,
+                "date_started": "2026-04-17",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("full_name", response.json()["errors"])
 
     def test_employee_list_can_filter_by_department(self):
         response = self.client.get(f"{reverse('employee_list')}?department={self.department.id}")
@@ -135,7 +163,9 @@ class EmployeeApiTests(TestCase):
         response = self.client.post(
             reverse("add_employee"),
             {
-                "full_name": "New Hire Person",
+                "first_name": "New",
+                "middle_name": "Hire",
+                "last_name": "Person",
                 "email": "newhire@example.com",
                 "contact_number": "09171112233",
                 "job": self.job.id,
@@ -148,6 +178,9 @@ class EmployeeApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         body = response.json()
         self.assertEqual(body["full_name"], "New Hire Person")
+        self.assertEqual(body["first_name"], "New")
+        self.assertEqual(body["middle_name"], "Hire")
+        self.assertEqual(body["last_name"], "Person")
         self.assertEqual(body["email"], "newhire@example.com")
         self.assertEqual(body["employment_type_name"], "Contract")
         self.assertEqual(body["job_name"], "Backend Developer")
@@ -159,3 +192,22 @@ class EmployeeApiTests(TestCase):
 
         after = self.client.get(reverse("employee_list")).json().get("count", 0)
         self.assertEqual(after, before + 1)
+
+    def test_add_employee_rejects_writable_full_name(self):
+        response = self.client.post(
+            reverse("add_employee"),
+            {
+                "full_name": "Should Fail",
+                "first_name": "New",
+                "last_name": "Person",
+                "email": "rejecthire@example.com",
+                "contact_number": "09171112233",
+                "job": self.job.id,
+                "employment_type": self.other_job_type.id,
+                "date_started": "2026-01-15",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("full_name", response.json()["errors"])

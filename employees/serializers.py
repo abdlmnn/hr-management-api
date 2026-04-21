@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from applicants.models import Applicant
+from applicants.serializers import DERIVED_FULL_NAME_ERROR
 from employees.models import Employee
 from job_types.models import JobType
 from jobs.models import Job
@@ -11,7 +12,12 @@ from jobs.models import Job
 
 class EmployeeSerializer(serializers.ModelSerializer):
     applicant_id = serializers.IntegerField(source="applicant.id", read_only=True)
-    full_name = serializers.CharField(source="applicant.full_name", required=True)
+    full_name = serializers.CharField(source="applicant.full_name", read_only=True)
+    first_name = serializers.CharField(source="applicant.first_name", required=True, allow_blank=False, max_length=100)
+    middle_name = serializers.CharField(
+        source="applicant.middle_name", required=False, allow_blank=True, allow_null=True, max_length=100
+    )
+    last_name = serializers.CharField(source="applicant.last_name", required=True, allow_blank=False, max_length=100)
     email = serializers.EmailField(source="applicant.email", required=True)
     contact_number = serializers.CharField(source="applicant.contact_number", required=True)
     status = serializers.ChoiceField(source="applicant.status", choices=Applicant.STATUS_CHOICES, required=True)
@@ -28,6 +34,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "applicant",
             "applicant_id",
             "full_name",
+            "first_name",
+            "middle_name",
+            "last_name",
             "email",
             "contact_number",
             "status",
@@ -44,6 +53,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "employee_id",
             "date_created",
+            "full_name",
             "department",
             "department_name",
             "job_name",
@@ -66,6 +76,26 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     def get_employment_type_name(self, obj):
         return obj.employment_type.name if obj.employment_type else None
+
+    def validate(self, attrs):
+        if "full_name" in self.initial_data:
+            raise ValidationError({"full_name": [DERIVED_FULL_NAME_ERROR]})
+        return super().validate(attrs)
+
+    def validate_first_name(self, value):
+        value = " ".join((value or "").split()).strip()
+        if not value:
+            raise ValidationError("First name is required.")
+        return value
+
+    def validate_middle_name(self, value):
+        return " ".join((value or "").split()).strip()
+
+    def validate_last_name(self, value):
+        value = " ".join((value or "").split()).strip()
+        if not value:
+            raise ValidationError("Last name is required.")
+        return value
 
     def update(self, instance, validated_data):
         applicant_data = validated_data.pop("applicant", {})
@@ -99,19 +129,34 @@ class CreateEmployeeSerializer(serializers.Serializer):
     HR-only payload: creates a hired Applicant and provisions an Employee via signals.
     """
 
-    full_name = serializers.CharField(max_length=100)
+    full_name = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(max_length=100)
+    middle_name = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=100)
+    last_name = serializers.CharField(max_length=100)
     email = serializers.EmailField()
     contact_number = serializers.CharField(max_length=100)
     job = serializers.PrimaryKeyRelatedField(queryset=Job.objects.filter(is_active=True))
     employment_type = serializers.PrimaryKeyRelatedField(queryset=JobType.objects.all())
     date_started = serializers.DateField()
 
-    def validate_full_name(self, value):
-        value = (value or "").strip()
+    def validate(self, attrs):
+        if "full_name" in self.initial_data:
+            raise ValidationError({"full_name": [DERIVED_FULL_NAME_ERROR]})
+        return super().validate(attrs)
+
+    def validate_first_name(self, value):
+        value = " ".join((value or "").split()).strip()
         if not value:
-            raise ValidationError("Full name is required.")
-        if len(value) < 2:
-            raise ValidationError("Full name must be at least 2 characters.")
+            raise ValidationError("First name is required.")
+        return value
+
+    def validate_middle_name(self, value):
+        return " ".join((value or "").split()).strip()
+
+    def validate_last_name(self, value):
+        value = " ".join((value or "").split()).strip()
+        if not value:
+            raise ValidationError("Last name is required.")
         return value
 
     def validate_contact_number(self, value):
