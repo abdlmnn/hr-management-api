@@ -1,9 +1,63 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from applicants.models import Applicant
 from employees.models import Employee
-from employees.serializers import EmployeeSerializer
+from employees.serializers import CreateEmployeeSerializer, EmployeeSerializer
+
+
+class CreateEmployeeView(APIView):
+    """
+    Creates an employee by adding a hired applicant (internal HR flow; no verification email).
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = CreateEmployeeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        username = (getattr(request.user, "username", None) or "sys")[:10]
+
+        applicant = Applicant.objects.create(
+            full_name=data["full_name"],
+            email=data["email"].strip().lower(),
+            contact_number=data["contact_number"],
+            job=data["job"],
+            status="hired",
+            cover_letter="",
+            updated_by=username,
+            verification_token=None,
+            token_created=None,
+        )
+
+        employee = Employee.objects.select_related(
+            "applicant",
+            "job",
+            "job__department",
+            "job__job_type",
+            "employment_type",
+        ).get(applicant=applicant)
+
+        update_fields = []
+        if data["employment_type"] != employee.employment_type:
+            employee.employment_type = data["employment_type"]
+            update_fields.append("employment_type")
+        if data["date_started"] != employee.date_started:
+            employee.date_started = data["date_started"]
+            update_fields.append("date_started")
+        if update_fields:
+            employee.updated_by = username
+            update_fields.append("updated_by")
+            employee.save(update_fields=update_fields)
+            employee.refresh_from_db()
+
+        out = EmployeeSerializer(employee, context={"request": request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
 
 
 class EmployeeView(generics.ListAPIView):
