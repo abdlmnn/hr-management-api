@@ -24,7 +24,9 @@ class CreateEmployeeView(APIView):
         username = (getattr(request.user, "username", None) or "sys")[:10]
 
         applicant = Applicant.objects.create(
-            full_name=data["full_name"],
+            first_name=data["first_name"],
+            middle_name=data.get("middle_name"),
+            last_name=data["last_name"],
             email=data["email"].strip().lower(),
             contact_number=data["contact_number"],
             job=data["job"],
@@ -68,6 +70,9 @@ class EmployeeView(generics.ListAPIView):
     search_fields = [
         "employee_id",
         "applicant__full_name",
+        "applicant__first_name",
+        "applicant__middle_name",
+        "applicant__last_name",
         "applicant__email",
         "applicant__contact_number",
         "job__name",

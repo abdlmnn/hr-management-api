@@ -22,11 +22,15 @@ def _get_applicant_status_label(applicant):
     )
 
 
+def _get_applicant_display_name(applicant):
+    return applicant.full_name or "Applicant"
+
+
 def _format_applicant_email_text(value, applicant, escape_html=False):
     if not value:
         return ""
 
-    applicant_name = applicant.full_name or "Applicant"
+    applicant_name = _get_applicant_display_name(applicant)
     job_name = _get_applicant_job_name(applicant)
 
     replacements = {
@@ -49,7 +53,7 @@ def _build_application_summary_html(applicant):
         "Please find below a summary of your job application for your reference:<br><br>"
         f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
         f"Current Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
-        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br><br>"
+        f"Applicant Name: {escape(_get_applicant_display_name(applicant))}<br><br>"
         "We appreciate your continued interest in pursuing employment with ILPI. "
         "Should you require any clarification, our Human Resources team will be pleased to assist you.<br><br>"
     )
@@ -71,7 +75,7 @@ def _build_hr_application_summary_html(applicant):
         "Applicant details are as follows:<br><br>"
         f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
         f"Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
-        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br>"
+        f"Applicant Name: {escape(_get_applicant_display_name(applicant))}<br>"
         f"Email Address: {escape(applicant.email or 'Not provided')}<br>"
         f"Contact Number: {escape(applicant.contact_number or 'Not provided')}<br>"
         f"Date Submitted: {escape(submitted_at)}<br>"
@@ -120,7 +124,9 @@ def create_application(data, username):
 
         # Update applicant details with latest submission (optional but helpful for corrections)
         # Keep status as pending until verified.
-        applicant.full_name = data.get("full_name", applicant.full_name)
+        applicant.first_name = data.get("first_name", applicant.first_name)
+        applicant.middle_name = data.get("middle_name", applicant.middle_name)
+        applicant.last_name = data.get("last_name", applicant.last_name)
         applicant.contact_number = data.get("contact_number", applicant.contact_number)
         applicant.cover_letter = data.get("cover_letter", applicant.cover_letter)
         if data.get("valid_id") is not None:
@@ -134,7 +140,9 @@ def create_application(data, username):
         applicant.updated_by = username
         applicant.save(
             update_fields=[
-                "full_name",
+                "first_name",
+                "middle_name",
+                "last_name",
                 "contact_number",
                 "cover_letter",
                 "valid_id",
@@ -158,14 +166,14 @@ def create_application(data, username):
     )
     subject = "Verify your Application"
     body = (
-        f"Dear {escape(applicant.full_name)},<br><br>"
+        f"Dear {escape(_get_applicant_display_name(applicant))},<br><br>"
         "Thank you for your interest in employment opportunities with ILPI.<br><br>"
         "Please verify your application by clicking the link below:<br><br>"
         f'<a href="{verification_url}">Verify Application</a><br><br>'
         "For your reference, your application details are summarized below:<br><br>"
         f"Position Applied For: {escape(_get_applicant_job_name(applicant))}<br>"
         f"Current Application Status: {escape(_get_applicant_status_label(applicant))}<br>"
-        f"Applicant Name: {escape(applicant.full_name or 'Applicant')}<br><br>"
+        f"Applicant Name: {escape(_get_applicant_display_name(applicant))}<br><br>"
         "Kindly note that this verification link will expire in 24 hours.<br><br>"
         "Best Regards,<br>"
         "ILPI Recruitment Team.<br><br><br><br>"
@@ -246,7 +254,7 @@ def create_and_send_email(applicant, status):
         position_name = escape(_get_applicant_job_name(applicant))
         subject = f"Application Update for {_get_applicant_job_name(applicant)}"
         body = (
-            f"Dear {escape(applicant.full_name)},<br><br>"
+            f"Dear {escape(_get_applicant_display_name(applicant))},<br><br>"
             "We are writing to provide an update regarding your application.<br><br>"
             f"Your application for the {position_name} position is currently under the "
             f'"{escape(status_label)}" status.<br><br>'

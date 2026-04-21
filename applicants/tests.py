@@ -35,7 +35,9 @@ class PublicApplicantCreateTests(TestCase):
     def test_public_create_ignores_status_field(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "middle_name": "T",
+            "last_name": "Person",
             "email": "test@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -56,7 +58,9 @@ class PublicApplicantCreateTests(TestCase):
     def test_public_create_resend_within_cooldown_is_blocked(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "middle_name": "T",
+            "last_name": "Person",
             "email": "resend1@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -73,7 +77,9 @@ class PublicApplicantCreateTests(TestCase):
     def test_public_create_resend_after_cooldown_rotates_token(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "middle_name": "T",
+            "last_name": "Person",
             "email": "resend2@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -102,8 +108,9 @@ class PublicApplicantCreateTests(TestCase):
     @override_settings(
         CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     )
-    def test_public_create_is_throttled(self):
-        # Lower rate for this test so we can assert 429 deterministically
+    def test_public_create_second_submission_is_blocked_when_throttle_is_disabled(self):
+        # Public throttle is currently disabled in the view, so the duplicate-submission
+        # guard in create_application is the protection that fires here.
         rf = dict(settings.REST_FRAMEWORK)
         rf["DEFAULT_THROTTLE_RATES"] = {"public_applicant_submit": "1/min"}
 
@@ -111,7 +118,8 @@ class PublicApplicantCreateTests(TestCase):
             url = reverse("add_applicant")
 
             payload = {
-                "full_name": "AA",
+                "first_name": "AA",
+                "last_name": "Tester",
                 "email": "t1@example.com",
                 "contact_number": "09123456789",
                 "job": self.job.id,
@@ -120,13 +128,18 @@ class PublicApplicantCreateTests(TestCase):
             r1 = self.client.post(url, payload, format="json")
             self.assertEqual(r1.status_code, 201)
             r2 = self.client.post(url, payload, format="json")
-            self.assertEqual(r2.status_code, 429)
+            self.assertEqual(r2.status_code, 400)
+            self.assertIn(
+                "A verification email has recently been sent. Please check your inbox (and spam folder).",
+                r2.json()["message"],
+            )
 
     @patch.dict(os.environ, {"CAPTCHA_SECRET_KEY": "dummy-secret"}, clear=False)
     def test_public_create_requires_captcha_when_configured(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "No Captcha",
+            "first_name": "No",
+            "last_name": "Captcha",
             "email": "nocaptcha@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -139,7 +152,8 @@ class PublicApplicantCreateTests(TestCase):
     def test_public_create_rejects_invalid_email(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "last_name": "Person",
             "email": "not-an-email",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -150,7 +164,8 @@ class PublicApplicantCreateTests(TestCase):
     def test_public_create_rejects_invalid_contact_number(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "last_name": "Person",
             "email": "valid@example.com",
             "contact_number": "abc123",
             "job": self.job.id,
@@ -158,10 +173,12 @@ class PublicApplicantCreateTests(TestCase):
         resp = self.client.post(url, payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    def test_public_create_trims_full_name(self):
+    def test_public_create_trims_name_parts_and_derives_full_name(self):
         url = reverse("add_applicant")
         payload = {
-            "full_name": "  Trim Me  ",
+            "first_name": "  Trim  ",
+            "middle_name": "  Q.  ",
+            "last_name": "  Me  ",
             "email": "trim@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -169,7 +186,24 @@ class PublicApplicantCreateTests(TestCase):
         resp = self.client.post(url, payload, format="json")
         self.assertEqual(resp.status_code, 201)
         applicant = Applicant.objects.get(email__iexact="trim@example.com", job=self.job)
-        self.assertEqual(applicant.full_name, "Trim Me")
+        self.assertEqual(applicant.first_name, "Trim")
+        self.assertEqual(applicant.middle_name, "Q.")
+        self.assertEqual(applicant.last_name, "Me")
+        self.assertEqual(applicant.full_name, "Trim Q. Me")
+
+    def test_public_create_rejects_writable_full_name(self):
+        url = reverse("add_applicant")
+        payload = {
+            "full_name": "Wrong Input",
+            "first_name": "Test",
+            "last_name": "Person",
+            "email": "reject@example.com",
+            "contact_number": "09123456789",
+            "job": self.job.id,
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("full_name", resp.json()["errors"])
 
     @patch.dict(os.environ, {"APPLICANT_UPLOAD_MAX_MB": "1"}, clear=False)
     def test_public_create_rejects_large_resume(self):
@@ -180,7 +214,8 @@ class PublicApplicantCreateTests(TestCase):
             content_type="application/pdf",
         )
         payload = {
-            "full_name": "Test Person",
+            "first_name": "Test",
+            "last_name": "Person",
             "email": "bigfile@example.com",
             "contact_number": "09123456789",
             "job": self.job.id,
@@ -214,7 +249,8 @@ class ApplicantVerifyRedirectTests(TestCase):
     )
     def test_verify_success_redirects_and_updates_status(self):
         applicant = Applicant.objects.create(
-            full_name="Verify Me",
+            first_name="Verify",
+            last_name="Me",
             email="verify1@example.com",
             contact_number="09123456789",
             job=self.job,
@@ -261,7 +297,8 @@ class ApplicantVerifyRedirectTests(TestCase):
     )
     def test_verify_expired_redirects(self):
         Applicant.objects.create(
-            full_name="Expired",
+            first_name="Expired",
+            last_name="Applicant",
             email="verify2@example.com",
             contact_number="09123456789",
             job=self.job,
@@ -304,7 +341,8 @@ class ApplicantStatusEmailTests(TestCase):
             is_active=True,
         )
         self.applicant = Applicant.objects.create(
-            full_name="Jane Applicant",
+            first_name="Jane",
+            last_name="Applicant",
             email="jane@example.com",
             contact_number="09123456789",
             job=self.job,

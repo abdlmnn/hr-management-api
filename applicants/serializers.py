@@ -3,12 +3,65 @@ import re
 
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import Applicant
-from datetime import timedelta
-from django.utils import timezone
+
+from .models import Applicant, normalize_name_part
 
 
-class ApplicantSerializer(serializers.ModelSerializer):
+DERIVED_FULL_NAME_ERROR = (
+    "full_name is derived from first_name, middle_name, and last_name. Send those fields instead."
+)
+
+
+class ApplicantNameWriteMixin:
+    full_name = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(required=True, allow_blank=False, max_length=100)
+    middle_name = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=100)
+    last_name = serializers.CharField(required=True, allow_blank=False, max_length=100)
+
+    def validate(self, attrs):
+        if "full_name" in self.initial_data:
+            raise ValidationError({"full_name": [DERIVED_FULL_NAME_ERROR]})
+        return super().validate(attrs)
+
+    def validate_first_name(self, value):
+        value = normalize_name_part(value)
+        if not value:
+            raise ValidationError("First name is required.")
+        return value
+
+    def validate_middle_name(self, value):
+        return normalize_name_part(value)
+
+    def validate_last_name(self, value):
+        value = normalize_name_part(value)
+        if not value:
+            raise ValidationError("Last name is required.")
+        return value
+
+    def validate_contact_number(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise ValidationError("Contact number is required.")
+
+        normalized = re.sub(r"[\s\-()]", "", value)
+        is_valid_ph_mobile = any(
+            re.fullmatch(pattern, normalized)
+            for pattern in (
+                r"09\d{9}",
+                r"\+639\d{9}",
+                r"639\d{9}",
+            )
+        )
+
+        if not is_valid_ph_mobile:
+            raise ValidationError(
+                "Contact number must be a valid Philippine mobile number, such as 09123456789 or +639123456789."
+            )
+
+        return value
+
+
+class ApplicantSerializer(ApplicantNameWriteMixin, serializers.ModelSerializer):
     valid_id = serializers.FileField(use_url=True, required=False)
     resume = serializers.FileField(use_url=True, required=False)
     job_name = serializers.SerializerMethodField()
@@ -31,6 +84,9 @@ class ApplicantSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "full_name",
+            "first_name",
+            "middle_name",
+            "last_name",
             "email",
             "contact_number",
             "job",
@@ -45,22 +101,21 @@ class ApplicantSerializer(serializers.ModelSerializer):
             "verification_token",
             "token_created",
             "updated_by",
+            "full_name",
             "date_applied",
         )
         extra_kwargs = {
-            "full_name": {"required": True},
             "email": {"required": True},
             "job": {"required": True},
         }
 
 
-class ApplicantCreateSerializer(serializers.ModelSerializer):
+class ApplicantCreateSerializer(ApplicantNameWriteMixin, serializers.ModelSerializer):
     """
     Public-facing create serializer.
     Locks down server-controlled/internal fields so applicants cannot set them.
     """
 
-    full_name = serializers.CharField(required=True, allow_blank=False, max_length=100)
     email = serializers.EmailField(required=True, allow_blank=False)
     contact_number = serializers.CharField(required=True, allow_blank=False, max_length=30)
     valid_id = serializers.FileField(use_url=True, required=False)
@@ -76,6 +131,9 @@ class ApplicantCreateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "full_name",
+            "first_name",
+            "middle_name",
+            "last_name",
             "email",
             "contact_number",
             "job",
@@ -89,42 +147,13 @@ class ApplicantCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = (
             # Server-controlled fields
+            "full_name",
             "status",
             "date_applied",
         )
         extra_kwargs = {
             "job": {"required": True},
         }
-
-    def validate_full_name(self, value: str) -> str:
-        value = (value or "").strip()
-        if not value:
-            raise ValidationError("Full name is required.")
-        if len(value) < 2:
-            raise ValidationError("Full name must be at least 2 characters.")
-        return value
-
-    def validate_contact_number(self, value: str) -> str:
-        value = (value or "").strip()
-        if not value:
-            raise ValidationError("Contact number is required.")
-
-        normalized = re.sub(r"[\s\-()]", "", value)
-        is_valid_ph_mobile = any(
-            re.fullmatch(pattern, normalized)
-            for pattern in (
-                r"09\d{9}",
-                r"\+639\d{9}",
-                r"639\d{9}",
-            )
-        )
-
-        if not is_valid_ph_mobile:
-            raise ValidationError(
-                "Contact number must be a valid Philippine mobile number, such as 09123456789 or +639123456789."
-            )
-
-        return value
 
     def _max_upload_bytes(self) -> int:
 
