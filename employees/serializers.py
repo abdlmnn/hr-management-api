@@ -1,7 +1,12 @@
+import re
+
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from applicants.models import Applicant
 from employees.models import Employee
+from job_types.models import JobType
+from jobs.models import Job
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -87,3 +92,46 @@ class EmployeeSerializer(serializers.ModelSerializer):
         applicant.save(update_fields=applicant_updated_fields)
 
         return instance
+
+
+class CreateEmployeeSerializer(serializers.Serializer):
+    """
+    HR-only payload: creates a hired Applicant and provisions an Employee via signals.
+    """
+
+    full_name = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    contact_number = serializers.CharField(max_length=100)
+    job = serializers.PrimaryKeyRelatedField(queryset=Job.objects.filter(is_active=True))
+    employment_type = serializers.PrimaryKeyRelatedField(queryset=JobType.objects.all())
+    date_started = serializers.DateField()
+
+    def validate_full_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise ValidationError("Full name is required.")
+        if len(value) < 2:
+            raise ValidationError("Full name must be at least 2 characters.")
+        return value
+
+    def validate_contact_number(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise ValidationError("Contact number is required.")
+
+        normalized = re.sub(r"[\s\-()]", "", value)
+        is_valid_ph_mobile = any(
+            re.fullmatch(pattern, normalized)
+            for pattern in (
+                r"09\d{9}",
+                r"\+639\d{9}",
+                r"639\d{9}",
+            )
+        )
+
+        if not is_valid_ph_mobile:
+            raise ValidationError(
+                "Contact number must be a valid Philippine mobile number, such as 09123456789 or +639123456789."
+            )
+
+        return value

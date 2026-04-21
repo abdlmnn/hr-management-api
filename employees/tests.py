@@ -128,3 +128,34 @@ class EmployeeApiTests(TestCase):
         response = self.client.get(f"{reverse('employee_list')}?department={self.other_department.id}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json().get("results", [])), 0)
+
+    def test_add_employee_creates_hired_applicant_and_employee(self):
+        before = self.client.get(reverse("employee_list")).json().get("count", 0)
+
+        response = self.client.post(
+            reverse("add_employee"),
+            {
+                "full_name": "New Hire Person",
+                "email": "newhire@example.com",
+                "contact_number": "09171112233",
+                "job": self.job.id,
+                "employment_type": self.other_job_type.id,
+                "date_started": "2026-01-15",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["full_name"], "New Hire Person")
+        self.assertEqual(body["email"], "newhire@example.com")
+        self.assertEqual(body["employment_type_name"], "Contract")
+        self.assertEqual(body["job_name"], "Backend Developer")
+        self.assertEqual(str(body["date_started"]), "2026-01-15")
+
+        applicant = Applicant.objects.get(email__iexact="newhire@example.com")
+        self.assertEqual(applicant.status, "hired")
+        self.assertTrue(Employee.objects.filter(applicant=applicant).exists())
+
+        after = self.client.get(reverse("employee_list")).json().get("count", 0)
+        self.assertEqual(after, before + 1)
