@@ -20,7 +20,7 @@ def cleanup_expired_application():
     print("Cleanup of expired applications completed.")
 
 
-@shared_task(name="send_hr_report_email")
+@shared_task(name="applicants.tasks.send_hr_report_email")
 def send_hr_report_email():
     """
     Generates and emails a daily report of applicant statuses to HR.
