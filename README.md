@@ -2,6 +2,10 @@
 
 This project is a Django-based REST API using Django REST Framework (DRF).
 
+## API Documentation
+
+- Public production endpoints: `docs/public-api-endpoints.md`
+
 ## Prerequisites
 
 - Python 3.10+
