@@ -10,6 +10,7 @@ from .models import Applicant, normalize_name_part
 DERIVED_FULL_NAME_ERROR = (
     "full_name is derived from first_name, middle_name, and last_name. Send those fields instead."
 )
+PDF_ONLY_UPLOAD_ERROR = "Only PDF files are allowed."
 
 
 class ApplicantNameWriteMixin:
@@ -61,7 +62,47 @@ class ApplicantNameWriteMixin:
         return value
 
 
-class ApplicantSerializer(ApplicantNameWriteMixin, serializers.ModelSerializer):
+class ApplicantUploadValidationMixin:
+    def _max_upload_bytes(self) -> int:
+        max_mb = int(os.getenv("APPLICANT_UPLOAD_MAX_MB", "25"))
+        return max_mb * 1024 * 1024
+
+    def _validate_pdf_upload(self, file_obj, field_name: str):
+        if not file_obj:
+            return
+        file_name = (getattr(file_obj, "name", "") or "").lower()
+        content_type = (getattr(file_obj, "content_type", "") or "").lower()
+        if not file_name.endswith(".pdf"):
+            raise ValidationError({field_name: [PDF_ONLY_UPLOAD_ERROR]})
+        # Browsers/clients can omit content_type; only reject when it is present and clearly not PDF.
+        if content_type and content_type != "application/pdf":
+            raise ValidationError({field_name: [PDF_ONLY_UPLOAD_ERROR]})
+
+    def _validate_upload_size(self, file_obj, field_name: str):
+        if not file_obj:
+            return
+        size = getattr(file_obj, "size", None)
+        if size is None:
+            return
+        max_bytes = self._max_upload_bytes()
+        if size > max_bytes:
+            max_mb = max_bytes // (1024 * 1024)
+            raise ValidationError({field_name: [f"File is too large. Maximum size is {max_mb} MB."]})
+
+    def _validate_upload(self, file_obj, field_name: str):
+        self._validate_pdf_upload(file_obj, field_name)
+        self._validate_upload_size(file_obj, field_name)
+
+    def validate_valid_id(self, value):
+        self._validate_upload(value, "valid_id")
+        return value
+
+    def validate_resume(self, value):
+        self._validate_upload(value, "resume")
+        return value
+
+
+class ApplicantSerializer(ApplicantUploadValidationMixin, ApplicantNameWriteMixin, serializers.ModelSerializer):
     valid_id = serializers.FileField(use_url=True, required=False)
     resume = serializers.FileField(use_url=True, required=False)
     job_name = serializers.SerializerMethodField()
@@ -110,7 +151,7 @@ class ApplicantSerializer(ApplicantNameWriteMixin, serializers.ModelSerializer):
         }
 
 
-class ApplicantCreateSerializer(ApplicantNameWriteMixin, serializers.ModelSerializer):
+class ApplicantCreateSerializer(ApplicantUploadValidationMixin, ApplicantNameWriteMixin, serializers.ModelSerializer):
     """
     Public-facing create serializer.
     Locks down server-controlled/internal fields so applicants cannot set them.
@@ -154,27 +195,3 @@ class ApplicantCreateSerializer(ApplicantNameWriteMixin, serializers.ModelSerial
         extra_kwargs = {
             "job": {"required": True},
         }
-
-    def _max_upload_bytes(self) -> int:
-
-        max_mb = int(os.getenv("APPLICANT_UPLOAD_MAX_MB", "25"))
-        return max_mb * 1024 * 1024
-
-    def _validate_upload_size(self, file_obj, field_name: str):
-        if not file_obj:
-            return
-        size = getattr(file_obj, "size", None)
-        if size is None:
-            return
-        max_bytes = self._max_upload_bytes()
-        if size > max_bytes:
-            max_mb = max_bytes // (1024 * 1024)
-            raise ValidationError({field_name: [f"File is too large. Maximum size is {max_mb} MB."]})
-
-    def validate_valid_id(self, value):
-        self._validate_upload_size(value, "valid_id")
-        return value
-
-    def validate_resume(self, value):
-        self._validate_upload_size(value, "resume")
-        return value
