@@ -224,6 +224,46 @@ class PublicApplicantCreateTests(TestCase):
         resp = self.client.post(url, payload, format="multipart")
         self.assertEqual(resp.status_code, 400)
 
+    def test_public_create_rejects_non_pdf_valid_id(self):
+        url = reverse("add_applicant")
+        invalid_id = SimpleUploadedFile(
+            "valid-id.jpg",
+            b"fake-image",
+            content_type="image/jpeg",
+        )
+        payload = {
+            "first_name": "Test",
+            "last_name": "Person",
+            "email": "invalidid@example.com",
+            "contact_number": "09123456789",
+            "job": self.job.id,
+            "valid_id": invalid_id,
+        }
+        resp = self.client.post(url, payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("valid_id", resp.json()["errors"])
+        self.assertIn("Only PDF files are allowed.", resp.json()["errors"]["valid_id"][0])
+
+    def test_public_create_rejects_non_pdf_resume(self):
+        url = reverse("add_applicant")
+        invalid_resume = SimpleUploadedFile(
+            "resume.docx",
+            b"fake-docx",
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        payload = {
+            "first_name": "Test",
+            "last_name": "Person",
+            "email": "invalidresume@example.com",
+            "contact_number": "09123456789",
+            "job": self.job.id,
+            "resume": invalid_resume,
+        }
+        resp = self.client.post(url, payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("resume", resp.json()["errors"])
+        self.assertIn("Only PDF files are allowed.", resp.json()["errors"]["resume"][0])
+
 
 class ApplicantVerifyRedirectTests(TestCase):
     def setUp(self):
