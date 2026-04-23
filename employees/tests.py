@@ -148,6 +148,25 @@ class EmployeeApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("full_name", response.json()["errors"])
 
+    def test_employee_update_rejects_invalid_contact_number(self):
+        response = self.client.patch(
+            reverse("update_employee", kwargs={"id": self.employee.id}),
+            {
+                "first_name": "Jamie",
+                "last_name": "Updated",
+                "email": "updated@example.com",
+                "contact_number": "abc123",
+                "status": "hired",
+                "job": self.other_job.id,
+                "employment_type": self.other_job_type.id,
+                "date_started": "2026-04-17",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("contact_number", response.json()["errors"])
+
     def test_employee_list_can_filter_by_department(self):
         response = self.client.get(f"{reverse('employee_list')}?department={self.department.id}")
         self.assertEqual(response.status_code, 200)

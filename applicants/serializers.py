@@ -103,6 +103,7 @@ class ApplicantUploadValidationMixin:
 
 
 class ApplicantSerializer(ApplicantUploadValidationMixin, ApplicantNameWriteMixin, serializers.ModelSerializer):
+    email = serializers.EmailField(required=True, allow_blank=False)
     valid_id = serializers.FileField(use_url=True, required=False)
     resume = serializers.FileField(use_url=True, required=False)
     job_name = serializers.SerializerMethodField()

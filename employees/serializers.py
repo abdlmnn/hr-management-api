@@ -97,6 +97,28 @@ class EmployeeSerializer(serializers.ModelSerializer):
             raise ValidationError("Last name is required.")
         return value
 
+    def validate_contact_number(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise ValidationError("Contact number is required.")
+
+        normalized = re.sub(r"[\s\-()]", "", value)
+        is_valid_ph_mobile = any(
+            re.fullmatch(pattern, normalized)
+            for pattern in (
+                r"09\d{9}",
+                r"\+639\d{9}",
+                r"639\d{9}",
+            )
+        )
+
+        if not is_valid_ph_mobile:
+            raise ValidationError(
+                "Contact number must be a valid Philippine mobile number, such as 09123456789 or +639123456789."
+            )
+
+        return value
+
     def update(self, instance, validated_data):
         applicant_data = validated_data.pop("applicant", {})
         username = validated_data.pop("updated_by", None) or getattr(self.context.get("request"), "user", None)
