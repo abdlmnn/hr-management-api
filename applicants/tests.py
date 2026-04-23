@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -420,3 +421,35 @@ class ApplicantStatusEmailTests(TestCase):
         self.assertIn("Dear Jane Applicant,", notification.body)
         self.assertIn("Position Applied For: Backend Developer", notification.body)
         self.assertIn("Current Application Status: Shortlisted", notification.body)
+
+
+class ApplicantUpdateValidationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(username="applicant-updater", password="secret123")
+        self.client.force_authenticate(self.user)
+        self.department = Department.objects.create(name="IT")
+        self.job_type = JobType.objects.create(name="Full-time", code="FT")
+        self.job = Job.objects.create(
+            name="Backend Developer",
+            department=self.department,
+            job_type=self.job_type,
+            is_active=True,
+        )
+        self.applicant = Applicant.objects.create(
+            first_name="Test",
+            last_name="Person",
+            email="valid@example.com",
+            contact_number="09123456789",
+            job=self.job,
+            status="applied",
+        )
+
+    def test_update_rejects_invalid_email_format(self):
+        response = self.client.patch(
+            reverse("update_applicant", kwargs={"id": self.applicant.id}),
+            {"email": "not-an-email"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.json()["errors"])
